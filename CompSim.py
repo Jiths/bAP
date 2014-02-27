@@ -13,13 +13,14 @@ from scipy import fftpack
 from Population import Population
 from Synapses import Synapses
 import pickle
+import sys
 
 
 class CompSim():
     '''
     This is the main simulation function.
     '''
-    def __init__(self, duration=200., dt=0.2):
+    def __init__(self, duration=6000., dt=0.2):
         
         print 'simulation started:', time.ctime()
 
@@ -32,7 +33,7 @@ class CompSim():
         self.naturalImage = [] #whether to use a natural image as an input - leave empty to use artificial stimulus
         self.imageSize = 4 #pixel size of the SIDE of the input image (total size = imageSize^2)
         self.popSize = 5 #side of the size of the population of neurons (total size = popSize^2)
-        self.numPattern = 3 #number of patterns embedded in the input
+        self.numPattern = 2 #number of patterns embedded in the input
         self.FS_RS = [1] #turns off lateral inhibition to excitatory cells - leave empty for OFF, put 1 for ON
         self.RS_RS = [1] #turns off lateral excitation to excitatory cells - leave empty for OFF, put 1 for ON
         self.RS_FS = [1] #turns off lateral excitation to inhibitory cells - leave empty for OFF, put 1 for ON
@@ -492,7 +493,6 @@ class CompSim():
         self.RS_RS_initWeight = np.copy(self.RS_FS.g[:,:])
         self.FS_RS_initWeight = np.copy(self.FS_RS.g[:,:])
         
-        if not self.STDPplot: print "prep time:", int((time.time()-self.tic_prep)/60), 'min,',  int(np.mod((time.time()-self.tic_prep),60)), 'sec'
         tic_run=time.time()
         
         for t in range(np.size(self.time_array)): #loop through all time steps of the trial
@@ -593,10 +593,19 @@ class CompSim():
                 self.trackValue(t)
                 if self.ODC_evol and np.mod(t*self.dt,1000)==0: self.showODC(t*self.dt)
                 if self.TC_RS_evol and np.mod(t*self.dt,1000)==0:self.showTC_RS(t*self.dt)
+            
+            if np.mod(t*self.dt,int(self.trialDuration/50))==0: 
+                i=int(t*self.dt/int(self.trialDuration/50))
+                timeLeft = -1
+                if i==0: timeStart = time.time()
+                else: timeLeft = (50-i)*(time.time()-timeStart)/i
+                sys.stdout.write('\r')
+                sys.stdout.write("[%-50s] %d%% done in: %d min %d sec" % ('='*i, 2*i, int((timeLeft)/60), int(np.mod((timeLeft),60)) ))
+                sys.stdout.flush()
         
         # returns the change in synaptic conductance
         if self.STDPplot: return self.TC_RS.g[0,0]-self.TC_RS_initWeight[0,0]
-        print "run time:", int((time.time()-tic_run)/60), 'min,',  int(np.mod((time.time()-tic_run),60)), 'sec'
+        print "\nrun time:", int((time.time()-tic_run)/60), 'min,',  int(np.mod((time.time()-tic_run),60)), 'sec'
      
     def trackValue(self, t):
         """ track different values """
@@ -932,7 +941,7 @@ class CompSim():
         rootSize = np.sqrt(self.RS.size)
         ODC_mat = np.zeros(self.RS.size)
         alpha_mat = np.zeros(self.RS.size)
-        #creat white color map with transparency gradient
+        #create white color map with transparency gradient
         cmap_trans = mpl.colors.LinearSegmentedColormap.from_list('my_cmap',['black','black'],256) 
         cmap_trans._init()
         alphas = np.linspace(1.0, 0, cmap_trans.N+3)
@@ -943,23 +952,11 @@ class CompSim():
             ODC_mat[RS] = np.argmax(prefPattern)
             alpha_mat[RS] = np.max(prefPattern)-(np.sum(prefPattern)-np.max(prefPattern))/self.numPattern
 #            ODC_mat[RS] = np.mean(self.TC_RS.g[[0,5,10,15],RS]) - np.mean(self.TC_RS.g[[3,6,9,12],RS])   
-        plt.imshow(np.reshape(ODC_mat, [rootSize, rootSize]),interpolation='nearest', cmap='Spectral') #color
+        plt.imshow(np.reshape(ODC_mat, [rootSize, rootSize]),interpolation='nearest', cmap='Spectral', vmin=0,vmax=3) #color
         plt.imshow(np.reshape(alpha_mat, [rootSize, rootSize]),interpolation='nearest', cmap=cmap_trans, vmin=-0.25,vmax=1.5) #transparency
         plt.title('Ocular Dominance at ' + np.str(t) + 'ms')
         if t == []: plt.savefig('../output/' + 'OcularDominance_final')
         else: plt.savefig('../output/' + 'OcularDominance_' + np.str(int(t))) 
-        
-        #print np.reshape(-alpha_mat, [rootSize, rootSize])
-        
-        for RS in range(self.RS.size):
-            prefPattern = [np.sum(self.TC_RS.g[[0,4,8,12],RS]),np.sum(self.TC_RS.g[[1,5,9,13],RS]),np.sum(self.TC_RS.g[[2,6,10,14],RS]),np.sum(self.TC_RS.g[[3,7,11,15],RS])]
-            ODC_mat[RS] = np.argmax(prefPattern)  
-        plt.imshow(np.reshape(ODC_mat, [rootSize, rootSize]),interpolation='nearest', cmap='Spectral') #color
-        plt.title('no transparency')
-        plt.savefig('../output/' + 'OcularDominance_NT_' + np.str(int(t)))
-#         file = open('DATA/12-2_OD_multi3-2/' + 'TC_RS_g_' + np.str(int(t)), 'w')
-#         pickle.dump(self.TC_RS.g, file)
-#         file.close()
     
     def showTC_RS(self, t=[]):
         plt.figure()
@@ -974,7 +971,6 @@ class CompSim():
         plt.colorbar(cax=cax)
         if t == []: plt.suptitle('Final TC->RS Weights')
         else: plt.suptitle('TC->RS Weights at ' + np.str(t) + 'ms')
-        print t
         if t == []: plt.savefig('../output/' + 'TC-RS_final')
         else: plt.savefig('../output/' + 'TC-RS_' + np.str(int(t)))
     
