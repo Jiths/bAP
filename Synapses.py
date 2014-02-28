@@ -13,6 +13,8 @@ class Synapses(object):
         Object Constructor 
         '''
         
+        size_t = [size[0],size[1],sim.trialDuration/sim.dt+1]
+        #synapse parameters
         self.preName = preName #name of the pre-synaptic population
         self.postName = postName #name of the post-synpatic population
         self.pre = pre #pointer to the pre-synaptic population

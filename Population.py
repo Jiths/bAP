@@ -12,6 +12,7 @@ class Population(object):
         ''' 
         Object Constructor 
         '''
+        size_t = [size,sim.trialDuration/sim.dt+1]
         #Neuron parameters
         self.name = name
         self.size = size
@@ -20,7 +21,7 @@ class Population(object):
         self.Tau_m = Cm*Rm
         self.Ie = Ie
         self.I_inhib = zeros(size)
-        self.Vm = zeros([size,sim.trialDuration/sim.dt+1])
+        self.Vm = zeros(size_t)
         self.Vm[:,-1] = sim.E_leak
         self.Gref = zeros(size)
         self.lastCellSpike = ones(size)*-1e99

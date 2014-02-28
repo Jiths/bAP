@@ -25,8 +25,8 @@ def main(argv=None):
         sim.createConnectionPattern()
         sim.createInput()
         sim.runSimulation()
-#        cProfile.run('sim.runSimulation()')
-        sim.showResults()
+#         cProfile.run('sim.runSimulation()')
+#         sim.showResults()
         plt.show()
     
 if __name__ == "__main__":
