@@ -20,7 +20,7 @@ class CompSim():
     '''
     This is the main simulation function.
     '''
-    def __init__(self, duration=6000., dt=0.2):
+    def __init__(self, duration=12000., dt=0.2):
         
         print 'simulation started:', time.ctime()
 
@@ -32,7 +32,7 @@ class CompSim():
         self.time_array = np.linspace(0,self.trialDuration,self.trialDuration/self.dt+1) #time array
         self.naturalImage = [] #whether to use a natural image as an input - leave empty to use artificial stimulus
         self.imageSize = 4 #pixel size of the SIDE of the input image (total size = imageSize^2)
-        self.popSize = 5 #side of the size of the population of neurons (total size = popSize^2)
+        self.popSize = 8 #side of the size of the population of neurons (total size = popSize^2)
         self.numPattern = 2 #number of patterns embedded in the input
         self.FS_RS = [1] #turns off lateral inhibition to excitatory cells - leave empty for OFF, put 1 for ON
         self.RS_RS = [1] #turns off lateral excitation to excitatory cells - leave empty for OFF, put 1 for ON
@@ -53,7 +53,7 @@ class CompSim():
         self.RS3_Vm      = []
         self.FS1_Vm      = []
         self.calcium     = []
-        self.raster      = []
+        self.raster      = [1]
         self.Vm_TC       = []
         self.TC_RS_init  = []
         self.TC_RS_evol  = [1]
@@ -529,10 +529,12 @@ class CompSim():
                 pops.Vm[~pastSpikes, t] = pops.Vm[~pastSpikes,t-1] + (I_leak + I_inj + I_ref + I_syn)/pops.Tau_m*self.dt #increment Vm at the cell soma
                 
                 #3- make the neurons that reached threshold during the ongoing time step spike
-                currentSpike = pops.Vm[:, t] >= self.Vth #find the neurons that reached threshold during the ongoing time step
-                pops.Vm[currentSpike,t] = self.Vspike #make those neurons spike
-                pops.spikeTimes[currentSpike,t] = 1 #record all spike times for raster plot
-                pops.lastCellSpike[currentSpike] = t #record last spike time
+                if t*self.dt>6000 and pops.name == 'FS' and (t-self.TC.lastCellSpike[0])*self.dt<10.:thrashThis=0 #added to remove inhibition after a spike in the TC neuron 0 (input pattern 1)
+                else:
+                        currentSpike = pops.Vm[:, t] >= self.Vth #find the neurons that reached threshold during the ongoing time step
+                        pops.Vm[currentSpike,t] = self.Vspike #make those neurons spike
+                        pops.spikeTimes[currentSpike,t] = 1 #record all spike times for raster plot
+                        pops.lastCellSpike[currentSpike] = t #record last spike time
 
             self.TC.lastCellSpike[self.TC.spikeTimes[:,t]==1] = t #make the TC neuron spike based on their pre-determined firing rate
                 
@@ -547,7 +549,6 @@ class CompSim():
                 if pops.name == 'RS': #compute the difference between inhibitory and excitatory conductance; used to suppress BPAP
                     pops.g_excit = np.sum(95*self.RS_RS.g*self.RS.OP,0) #total excitatory conductance
                     pops.g_inhib = np.sum(375*self.FS_RS.g*self.FS.OP,0) #total inhibitory conductance 
-#                    I_tot = 1.0/(1.0+np.exp((pops.g_inhib-pops.g_excit-8)/2)) #sigmoid relationship between g_inhib-g_excit and BPAP amplitude decrease 
                     I_tot = np.clip(-0.072*(pops.g_inhib-pops.g_excit)+1.0,0,1) #linear relationship between g_inhib-g_excit and BPAP amplitude decrease, clipped to max=1
                 else: I_tot = np.ones(pops.size)
                 mask = np.logical_and(-deltaT>=1.0,-deltaT<=2.0) #triggers a BPAP in the spines from 1ms to 2ms after a spike at the soma
@@ -677,7 +678,7 @@ class CompSim():
             plt.plot(self.time_array, -self.valueTracker[11,:]*1000+80, 'r') #depression variable
             plt.ylim(-100,100)
             plt.title('RS '+ str(self.RS1))
-            plt.savefig('../output/' + 'RS1_Vm')
+            plt.savefig('../output/' + 'RS1_Vm.png')
         
         if self.RS2_Vm:#displays evolution of membrane and synaptic potentials of neuron RS1
             plt.figure()
@@ -693,7 +694,7 @@ class CompSim():
             plt.plot(self.time_array, -self.valueTracker[16,:]*1000+80, 'r') #depression variable
             plt.ylim(-100,100)
             plt.title('RS ' + str(self.RS2))
-            plt.savefig('../output/' + 'RS2_Vm')
+            plt.savefig('../output/' + 'RS2_Vm.png')
             
         if self.RS3_Vm:#displays evolution of membrane and synaptic potentials of neuron RS1
             plt.figure()
@@ -709,7 +710,7 @@ class CompSim():
             plt.plot(self.time_array, -self.valueTracker[21,:]*1000+80, 'r') #depression variable
             plt.ylim(-100,100)
             plt.title('RS ' + str(self.RS3))
-            plt.savefig('../output/' + 'RS3_Vm')
+            plt.savefig('../output/' + 'RS3_Vm.png')
         
         if self.FS1_Vm:#displays evolution of membrane and synaptic potentials of neuron RS1
             plt.figure()
@@ -721,7 +722,7 @@ class CompSim():
             plt.plot(self.time_array, -self.valueTracker[26,:]*1000+80, 'r') #depression variable
             plt.ylim(-100,100)
             plt.title('FS ' + str(self.FS1))
-            plt.savefig('../output/' + 'FS1_Vm')
+            plt.savefig('../output/' + 'FS1_Vm.png')
         
         if self.calcium:#displays evolution of the calcium detectors
             plt.figure()
@@ -731,7 +732,7 @@ class CompSim():
             plt.plot(self.time_array, self.CaDetectorsTracker[2,:], 'c') #B
             plt.plot(self.time_array, self.CaDetectorsTracker[3,:], 'm') #V
             plt.ylim(-0.1,3.3)
-            plt.savefig('../output/' + 'calcium')
+            plt.savefig('../output/' + 'calcium.png')
         
         if self.raster:#display spike raster plot
             plt.figure()
@@ -749,7 +750,7 @@ class CompSim():
             plt.ylim(-1,neuronCounter)
             plt.xlabel('time(ms)')
             plt.ylabel('neuron')
-            plt.savefig('../output/' + 'raster')
+            plt.savefig('../output/' + 'raster.png')
 
         if self.Vm_TC:#displays Vm for all TC cells
             plt.figure()
@@ -815,7 +816,7 @@ class CompSim():
             cax = plt.axes([0.85, 0.1, 0.075, 0.8])
             plt.colorbar(cax=cax)
             plt.suptitle('Initial RS->RS Weights')
-            plt.savefig('../output/' + 'RS_RS_init')
+            plt.savefig('../output/' + 'RS_RS_init.png')
         
         if self.RS_RS_final:
             plt.figure()
@@ -828,7 +829,7 @@ class CompSim():
             cax = plt.axes([0.85, 0.1, 0.075, 0.8])
             plt.colorbar(cax=cax)
             plt.suptitle('Final RS->RS Weights')
-            plt.savefig('../output/' + 'RS_RS_final')
+            plt.savefig('../output/' + 'RS_RS_final.png')
            
         if self.RS_FS_init:
             plt.figure()
@@ -841,7 +842,7 @@ class CompSim():
             cax = plt.axes([0.85, 0.1, 0.075, 0.8])
             plt.colorbar(cax=cax)
             plt.suptitle('Initial RS->FS Weights')
-            plt.savefig('../output/' + 'RS_FS_init')
+            plt.savefig('../output/' + 'RS_FS_init.png')
          
         if self.RS_FS_final:
             plt.figure()
@@ -854,7 +855,7 @@ class CompSim():
             cax = plt.axes([0.85, 0.1, 0.075, 0.8])
             plt.colorbar(cax=cax)
             plt.suptitle('Final RS->FS Weights')
-            plt.savefig('../output/' + 'RS_FS_final')
+            plt.savefig('../output/' + 'RS_FS_final.png')
             
         if self.ODC: #dipslays an ocular dominance map
             self.showODC()
@@ -872,7 +873,7 @@ class CompSim():
             plt.plot(spikes*self.dt,(self.TC_RS.g_max-0.02)*np.ones(len(spikes)), 'vb')
             plt.legend("\\")
             plt.title("RS " + np.str(self.RS1))
-            plt.savefig('../output/' + 'RS_1')
+            plt.savefig('../output/' + 'RS_1.png')
         
         if self.RS2_weight: #display weight evolution of RS neuron 2
             plt.figure()
@@ -887,7 +888,7 @@ class CompSim():
             plt.ylim(0,self.TC_RS.g_max)
             plt.legend('\\')
             plt.title("RS " + np.str(self.RS2))
-            plt.savefig('../output/' + 'RS_2')
+            plt.savefig('../output/' + 'RS_2.png')
             
         if self.RS3_weight: #display weight evolution of RS neuron 3
             plt.figure()
@@ -902,7 +903,7 @@ class CompSim():
             plt.ylim(0,self.TC_RS.g_max)
             plt.legend('\\')
             plt.title("RS " + np.str(self.RS3))
-            plt.savefig('../output/' + 'RS_3')
+            plt.savefig('../output/' + 'RS_3.png')
             
         if self.FS1_weight: #display weight evolution of FS neuron 1
             plt.figure()
@@ -913,14 +914,14 @@ class CompSim():
             plt.ylim(0,self.TC_RS.g_max)
             plt.legend('\\')
             plt.title("FS " + np.str(self.FS1))
-            plt.savefig('../output/' + 'FS_1')
+            plt.savefig('../output/' + 'FS_1.png')
             
         if self.weightChange: #displays the percent of total weight change every at every 100ms
             plt.figure()
             x=np.linspace(0,self.trialDuration,int((self.trialDuration/500)/self.dt)+1)
             plt.plot(x, self.percentChange, '-ob')
             plt.title('percent weight change')
-            plt.savefig('../output/' + 'percent_weight_change')
+            plt.savefig('../output/' + 'percent_weight_change.png')
             
         if self.extraPlot: #displays an extra, custom plot
             plt.figure()
@@ -932,7 +933,7 @@ class CompSim():
 #            plt.plot(self.time_array, self.valueTracker[5]+50, 'b')
 #            plt.plot(self.time_array, self.valueTracker[6]+60, 'b')
             plt.ylim(-100,50)
-            plt.savefig('../output/' + 'extraPlot')
+            plt.savefig('../output/' + 'extraPlot.png')
             
         if not self.STDPplot: print "plot time:", int((time.time()-tic_plot)/60), 'min,',  int(np.mod((time.time()-tic_plot),60)), 'sec'
 
@@ -955,8 +956,8 @@ class CompSim():
         plt.imshow(np.reshape(ODC_mat, [rootSize, rootSize]),interpolation='nearest', cmap='Spectral', vmin=0,vmax=3) #color
         plt.imshow(np.reshape(alpha_mat, [rootSize, rootSize]),interpolation='nearest', cmap=cmap_trans, vmin=-0.25,vmax=1.5) #transparency
         plt.title('Ocular Dominance at ' + np.str(t) + 'ms')
-        if t == []: plt.savefig('../output/' + 'OcularDominance_final')
-        else: plt.savefig('../output/' + 'OcularDominance_' + np.str(int(t))) 
+        if t == []: plt.savefig('../output/' + 'OcularDominance_final.png')
+        else: plt.savefig('../output/' + 'OcularDominance_' + np.str(int(t)) + '.png') 
     
     def showTC_RS(self, t=[]):
         plt.figure()
@@ -971,6 +972,6 @@ class CompSim():
         plt.colorbar(cax=cax)
         if t == []: plt.suptitle('Final TC->RS Weights')
         else: plt.suptitle('TC->RS Weights at ' + np.str(t) + 'ms')
-        if t == []: plt.savefig('../output/' + 'TC-RS_final')
-        else: plt.savefig('../output/' + 'TC-RS_' + np.str(int(t)))
+        if t == []: plt.savefig('../output/' + 'TC-RS_final.png')
+        else: plt.savefig('../output/' + 'TC-RS_' + np.str(int(t)) + '.png')
     
