@@ -12,7 +12,8 @@ import numpy as np
 from scipy import fftpack
 from Population import Population
 from Synapses import Synapses
-import pickle
+from SynTracker import SynTracker
+import cPickle as pickle
 import sys
 
 
@@ -20,9 +21,7 @@ class CompSim():
     '''
     This is the main simulation function.
     '''
-    def __init__(self, duration=100., dt=0.2):
-        
-        print 'simulation started:', time.ctime()
+    def __init__(self, duration=500., dt=0.2):
 
         self.tic_prep = time.time()
         
@@ -39,17 +38,10 @@ class CompSim():
         self.RS_FS = [1] #turns off lateral excitation to inhibitory cells - leave empty for OFF, put 1 for ON
         self.FS_FS = [1] #turns off lateral inhibition to inhibitory cells - leave empty for OFF, put 1 for ON
         self.gaussian = [] #whether 'intracortical' connections are distributed according to a Gaussian distribution. If not, follows a square wave
-#        np.random.seed(83251) #seeds the random number generator
+        np.random.seed(83251) #seeds the random number generator
         
-        #neurons whose stats should be displayed
-        self.RS1=0
-        self.RS2=5
-        self.RS3=3
-        self.FS1=0
-        
-        #evolutuion plots
-        self.ODC_evol = [1]
-        self.TC_RS_evol = [1]
+        #Indices of RS neurons whose synaptic variables should be tracked
+        self.neuronToTrack = [0]
       
     def setParam(self):
         
@@ -102,13 +94,13 @@ class CompSim():
         """ TC->RS synapses parameters """
         self.TC_RS_size = [self.TC_size, self.RS_size]
         self.TC_RS_G = 0.13 #maximal unitary conductance of the thalamocortical synapses on RS cells
-        self.TC_RS_weightRand = 0.03 #variability in weight initialization
+        self.TC_RS_weightRand = 0.03 #variability in weight initialization - weight initialization
         self.TC_RS_rise = 5 #rise time constant of the excitatory synaptic conductance
         self.TC_RS_decay = 0.5 #decay time constant of the excitatory synaptic conductance
         self.TC_RS_E = self.E_e #synaptic reversial potential
         self.TC_RS_G_max = 0.35 #maximal synaptic conductance - weights cannot grow stronger than this value
         
-        """ TC->FS synapses parameters """
+        """ TC->FS synapses parameters """#not in use
         self.TC_FS_size = [self.TC_size, self.FS_size]
         self.TC_FS_G = 0.0#0.1 #maximal unitary conductance of the thalamocortical synapses on FS cells
         self.TC_FS_weightRand = 0.0#0.02 #variability in weight initialization
@@ -119,7 +111,7 @@ class CompSim():
         
         """ RS->FS synapses parameters """
         self.RS_FS_size = [self.RS_size, self.FS_size]
-        self.RS_FS_G = 1.0 #maximal unitary conductance, when OP=1
+        self.RS_FS_G = 1.0 #maximal unitary conductance, when OP=1 - weight initialization
         if not self.RS_FS: self.RS_FS_G = 0.0
         self.RS_FS_weightRand = 0.0 #MUST BE 0 #variability in weight initialization
         self.RS_FS_rise = 10.0 #rise time constant of the excitatory synaptic conductance
@@ -130,7 +122,7 @@ class CompSim():
         
         """ FS->RS synapses parameters """
         self.FS_RS_size = [self.FS_size, self.RS_size]
-        self.FS_RS_G = 0.006 #maximal unitary conductance of the inhibitory synapses on RS cells
+        self.FS_RS_G = 0.006 #maximal unitary conductance of the inhibitory synapses on RS cells - weight initialization
         if not self.FS_RS: self.FS_RS_G = 0. #turns inhibition off
         self.FS_RS_weightRand = 0 #MUST BE 0 #variability in weight initialization
         self.FS_RS_rise = 5.5 #rise time constant of the inhibitory synaptic conductance
@@ -141,7 +133,7 @@ class CompSim():
         
         """ RS->RS synapses parameters """
         self.RS_RS_size = [self.RS_size, self.RS_size]
-        self.RS_RS_G = 0.06#0.12 #initial maximal unitary conductance
+        self.RS_RS_G = 0.06#0.12 #initial maximal unitary conductance - weight initialization
         if not self.RS_RS: self.RS_RS_G = 0.
         self.RS_RS_weightRand = 0. #MUST BE 0 #variability in weight initialization
         self.RS_RS_rise = 5 #rise time constant of the excitatory synaptic conductance
@@ -150,9 +142,9 @@ class CompSim():
         self.RS_RS_G_max = 0.12 #maximal synaptic conductance - weights cannot grow stronger than this value
         self.RS_RS_extent = 3#1.0 #extent of lateral connections
         
-        """ FS->FS synapses parameters """
+        """ FS->FS synapses parameters """ #not in use
         self.FS_FS_size = [self.FS_size, self.FS_size]
-        self.FS_FS_G = 0.0#0.2 #maximal unitary conductance of the inhibitory synapses on RS cells
+        self.FS_FS_G = 0.0#0.2 #maximal unitary conductance of the inhibitory synapses on RS cells - weight initialization
         if not self.FS_FS: self.FS_FS_G = 0. #turns inhibition off
         self.FS_FS_weightRand = 0 #MUST BE 0 #variability in weight initialization
         self.FS_FS_rise = 5.5 #rise time constant of the inhibitory synaptic conductance
@@ -235,7 +227,6 @@ class CompSim():
             synapses.V = np.zeros([1,1])
             synapses.B = np.zeros([1,1])
             synapses.D = np.zeros([1,1])
-            synapses.W = np.zeros([1,1])
         self.TC_RS.g = np.ones([1,1])*self.STDPplot_initialG_TC_RS
         self.TC_FS.g = np.ones([1,1])*self.STDPplot_initialG_TC_FS
         self.FS_RS.g = np.ones([1,1])*self.STDPplot_initialG_FS_RS
@@ -244,12 +235,10 @@ class CompSim():
         """ create synapses """
         
         self.TC_RS = Synapses(self, 'TC', 'RS', {}, {}, self.TC_RS_size, self.TC_RS_G, self.TC_RS_weightRand, self.TC_RS_G_max, self.TC_RS_rise, self.TC_RS_decay, self.TC_RS_E)
-        self.TC_FS = Synapses(self, 'TC', 'FS', {}, {}, self.TC_FS_size, self.TC_FS_G, self.TC_FS_weightRand, self.TC_FS_G_max, self.TC_FS_rise, self.TC_FS_decay, self.TC_FS_E)
         self.FS_RS = Synapses(self, 'FS', 'RS', {}, {}, self.FS_RS_size, self.FS_RS_G, self.FS_RS_weightRand, self.FS_RS_G_max, self.FS_RS_rise, self.FS_RS_decay, self.FS_RS_E, self.FS_RS_extent)
-        self.FS_FS = Synapses(self, 'FS', 'FS', {}, {}, self.FS_FS_size, self.FS_FS_G, self.FS_FS_weightRand, self.FS_FS_G_max, self.FS_FS_rise, self.FS_FS_decay, self.FS_FS_E, self.FS_FS_extent)
         self.RS_FS = Synapses(self, 'RS', 'FS', {}, {}, self.RS_FS_size, self.RS_FS_G, self.RS_FS_weightRand, self.RS_FS_G_max, self.RS_FS_rise, self.RS_FS_decay, self.RS_FS_E, self.RS_FS_extent)
         self.RS_RS = Synapses(self, 'RS', 'RS', {}, {}, self.RS_RS_size, self.RS_RS_G, self.RS_RS_weightRand, self.RS_RS_G_max, self.RS_RS_rise, self.RS_RS_decay, self.RS_RS_E, self.RS_RS_extent)
-        self.synapses = {self.TC_RS, self.TC_FS, self.FS_RS, self.FS_FS, self.RS_FS, self.RS_RS}
+        self.synapses = {self.TC_RS, self.FS_RS, self.RS_FS, self.RS_RS} #some synapse population are not in use
         
     def createPopulations(self):
         """ create neuron populations and connections between neurons """
@@ -261,20 +250,18 @@ class CompSim():
         self.FS = Population(self, 'FS', self.FS_size, self.FS_Rm, self.FS_Cm, self.FS_Ie, self.FS_tau_Gref)
         
         """ receiving synapses """
-        self.TC.receivesFrom = {} #synapse population TC is post-synaptic to
-        self.RS.receivesFrom = {self.TC_RS, self.FS_RS, self.RS_RS} #synapse population RS is post-synaptic to
-        self.FS.receivesFrom = {self.TC_FS, self.RS_FS} #synapse population FS is post-synaptic to
+        self.TC.receivesFrom = [] #synapse population TC is post-synaptic to
+        self.RS.receivesFrom = [self.TC_RS, self.FS_RS, self.RS_RS] #synapse population RS is post-synaptic to
+        self.FS.receivesFrom = [self.RS_FS] #synapse population FS is post-synaptic to
         
         """ projecting synapses """
-        self.TC.projectsTo = {self.TC_RS, self.TC_FS} #synapse population TC is pre-synaptic to
-        self.RS.projectsTo = {self.RS_FS, self.RS_RS} #synapse population RS is pre-synaptic to
-        self.FS.projectsTo = {self.FS_RS} #synapse population FS is pre-synaptic to
+        self.TC.projectsTo = [self.TC_RS] #synapse population TC is pre-synaptic to
+        self.RS.projectsTo = [self.RS_FS, self.RS_RS] #synapse population RS is pre-synaptic to
+        self.FS.projectsTo = [self.FS_RS] #synapse population FS is pre-synaptic to
         
         """ pointer to pre- and post-synaptic population """
         self.TC_RS.pre = self.TC
         self.TC_RS.post = self.RS
-        self.TC_FS.pre = self.TC
-        self.TC_FS.post = self.FS
         self.FS_RS.pre = self.FS
         self.FS_RS.post = self.RS
         self.RS_FS.pre = self.RS
@@ -282,7 +269,18 @@ class CompSim():
         self.RS_RS.pre = self.RS
         self.RS_RS.post = self.RS
         
-        self.population = {self.TC,self.RS,self.FS}
+        self.population = {self.TC, self.FS, self.RS}
+    
+    def createSynTracker(self):
+        """ create objects to track the synaptic variables for a few selected neurons """
+        
+        self.allSynTracker = []
+        for n in self.neuronToTrack:
+            self.allSynTracker.append(SynTracker(n, [self.TC_size, np.size(self.time_array)]))
+            
+        #creates an array to store synaptic weights over time
+        self.TC_RS_gTracker = np.zeros([self.TC_size*self.RS_size, np.size(self.time_array)/250+1])
+        self.timeStamp = np.zeros(np.size(self.time_array)/250+1)
     
     def createConnectionPattern(self):
         """ assign connection weights to connections between neurons """
@@ -464,26 +462,18 @@ class CompSim():
             spines are read by four calcium detectors (P, D, B and V) controlling synaptic plasticity. Plasticity is reflected in modifications of the 
             excitatory conductance of individual spines  """
         
-        #copy initial synaptic weights
+        #copy initial synaptic weights for STDP plot
         self.TC_RS_initWeight = np.copy(self.TC_RS.g[:,:])
-        self.TC_FS_initWeight = np.copy(self.TC_FS.g[:,:])
-        self.RS_RS_initWeight = np.copy(self.RS_RS.g[:,:])
-        self.RS_RS_initWeight = np.copy(self.RS_FS.g[:,:])
-        self.FS_RS_initWeight = np.copy(self.FS_RS.g[:,:])
-        print np.shape(self.RS_FS.pre.OP)
+
         tic_run=time.time()
         for t in range(np.size(self.time_array)): #loop through all time steps of the trial
-            
-            #used to compute weight change at each time step
-            TC_RSmemory = np.copy(self.TC_RS.g[:,:])
-            changeBin = 0.0
             
             if self.STDPplot: #triggers spikes in the TC and RS; used to plot the STDP curve
                 if np.mod(t*self.dt,1000)==40: self.TC.lastCellSpike=np.ones(np.shape(self.TC.lastCellSpike))*t #triggers a pre-synaptic spike at t=40ms
                 if np.mod(t*self.dt,1000)==40-isi: self.RS.Vm[0,t-1] = self.Vth + 10. #triggers a post-synaptic spike at t=40ms-isi
 #                if np.mod(t*self.dt,1000)==40-isi-2: self.FS.Vm[0,t-1] = self.Vth + 10. #triggers a spike in a FS neuron at t=40ms-isi-2ms
             
-            for pops in {self.RS, self.FS}: #loop through the different populations and compute membrane currents based on conductance change from last time step
+            for pops in [self.RS, self.FS]: #loop through the different populations and compute membrane currents based on conductance change from last time step
                 #1- reset neurons that spiked at last time step
                 pastSpikes = pops.Vm[:,t-1]>=self.Vspike-1 #find the neurons that spiked at last time step
                 pops.Vm[pastSpikes,t]=self.Vreset #reset Vm to Vreset after a spike
@@ -495,12 +485,12 @@ class CompSim():
                 I_syn = 0 #total synaptic currents (initialize)
                 for syns in pops.receivesFrom: #compute all the synaptic currents received by a population of neurons
                     syns.Mg = 1./(1.+np.exp(-0.092*(syns.Vm+13))*0.56) #compute the voltage-dependent blockade level of NMDAr by Mg
-                    syns.I = syns.g*syns.pre.OP*(syns.E-syns.Vm) #AMPA and GABA current
+                    syns.I = syns.g*syns.pre.OP[:,t-1][:,np.newaxis]*(syns.E-syns.Vm) #AMPA and GABA current
                     I_syn += sum(syns.I,0)[~pastSpikes]  #sum of AMPA and GABA synaptic currents
-                    syns.V_BPAP = self.Vmax_BPAP*syns.post.BPAP #BPAP depolarization
+                    syns.V_BPAP = self.Vmax_BPAP*syns.post.BPAP[:,t-1] #BPAP depolarization
                     syns.VmPSP += ((self.E_leak-syns.VmPSP) + (pops.Rm/pops.Rm)*syns.I*1.1)/pops.Tau_m*self.dt#syns.VmPSP += ((self.E_leak-syns.VmPSP) + pops.Rm*syns.I*0.28)/pops.Tau_m*self.dt #compute the synaptically local EPSP
                     syns.Vm = syns.VmPSP + syns.V_BPAP #superposition of the synaptic PSP and bAP
-                    syns.I_NMDA = self.g_NMDA*syns.pre.OP_NMDA*syns.Mg*(self.E_Ca-syns.Vm) #NMDA calcium current
+                    syns.I_NMDA = self.g_NMDA*syns.pre.OP_NMDA[:,t-1][:,np.newaxis]*syns.Mg*(self.E_Ca-syns.Vm) #NMDA calcium current
                     syns.I_VGCC = 1./(1+np.exp((syns.Vm-25.)/7.))-1./(1.+np.exp((syns.Vm+15.)/7.)) #VGCC calcium current 
                     syns.calcium += 5*(syns.I_NMDA+0.1*syns.I_VGCC)-(syns.calcium-self.Crest)/self.tau_Ca #update intracellular calcium concentration                     
                 pops.Vm[~pastSpikes, t] = pops.Vm[~pastSpikes,t-1] + (I_leak + I_inj + I_ref + I_syn)/pops.Tau_m*self.dt #increment Vm at the cell soma
@@ -521,16 +511,18 @@ class CompSim():
                 pops.Gref[(t-pops.lastCellSpike)>=1./self.dt] -= (pops.Gref[(t-pops.lastCellSpike)>=1./self.dt]/pops.tau_Gref)*self.dt
                 #5- compute the changes in conductance (OP) due to pre-synaptic spikes
                 deltaT = -(t-pops.lastCellSpike)*self.dt #time since last pre-synaptic spike
-                pops.OP = np.reshape(0.5*np.exp(deltaT/self.tau_ampaF)+0.5*np.exp(deltaT/self.tau_ampaS),[pops.size,1]) #compute AMPA OP
-                pops.OP_NMDA = np.reshape(0.85*np.exp(deltaT/self.tau_nmdaF)+0.15*np.exp(deltaT/self.tau_nmdaS),[pops.size,1]) #compute NMDA OP
+                pops.OP[:,t] = (0.5*np.exp(deltaT/self.tau_ampaF)+0.5*np.exp(deltaT/self.tau_ampaS)) #compute AMPA OP
+                pops.OP_NMDA[:,t] = (0.85*np.exp(deltaT/self.tau_nmdaF)+0.15*np.exp(deltaT/self.tau_nmdaS)) #compute NMDA OP
+                
+            for pops in self.population:
                 if pops.name == 'RS': #compute the difference between inhibitory and excitatory conductance; used to suppress BPAP
-                    pops.g_excit = np.sum(95*self.RS_RS.g*self.RS.OP,0) #total excitatory conductance
-                    pops.g_inhib = np.sum(375*self.FS_RS.g*self.FS.OP,0) #total inhibitory conductance 
-                    I_tot = np.clip(-0.072*(pops.g_inhib-pops.g_excit)+1.0,0,1) #linear relationship between g_inhib-g_excit and BPAP amplitude decrease, clipped to max=1
+                    pops.g_excit[:,t] = np.sum(95*self.RS_RS.g*self.RS.OP[:,t],0) #total excitatory conductance
+                    pops.g_inhib[:,t] = np.sum(375*self.FS_RS.g*self.FS.OP[:,t],0) #total inhibitory conductance 
+                    I_tot = np.clip(-0.072*(pops.g_inhib[:,t]-pops.g_excit[:,t])+1.0,0,1) #linear relationship between g_inhib-g_excit and BPAP amplitude decrease, clipped to max=1
                 else: I_tot = np.ones(pops.size)
-                mask = np.logical_and(-deltaT>=1.0,-deltaT<=2.0) #triggers a BPAP in the spines from 1ms to 2ms after a spike at the soma
-                pops.BPAP[mask] = I_tot[mask] #the amplitude of the BPAP is decreased proportionally to EPSC and IPSC.
-                pops.BPAP[~mask] = 0. #BPAPs are simulated as square waves; set to zero 2ms after spike initiation at the soma 
+                mask = np.logical_and(-deltaT>=1.2,-deltaT<=2.2) #triggers a BPAP in the spines from 1.2ms to 2.2ms after a spike at the soma
+                pops.BPAP[:,t][mask] = I_tot[mask] #the amplitude of the BPAP is decreased proportionally to EPSC and IPSC.
+                pops.BPAP[:,t][~mask] = 0. #BPAPs are simulated as square waves; set to zero 2.2ms after spike initiation at the soma 
 
             #7- compute changes in synaptic efficacy (plasticity) - only TC->RS synapses exhibit plasticity
             for syns in self.synapses:
@@ -543,34 +535,7 @@ class CompSim():
                     syns.g = np.clip(syns.g + (self.lr_LTP*syns.P-self.lr_LTD*syns.D)*self.dt, 0, syns.g_max_matrix) #update synaptic weights based on P and D
                
             #value trackers
-            changeBin += np.sum(np.abs(TC_RSmemory-self.TC_RS.g))/np.sum(self.TC_RS.g)
-            if np.mod(t,500)==0: 
-                self.percentChange[int(t/500)]=changeBin/500
-                changeBin=0.0  
-            self.STDPtracker[0,t] = self.RS.Vm[0,t]
-            self.STDPtracker[1,t] = self.TC_RS.Vm[0,0]
-            self.STDPtracker[2,t] = self.TC_RS.calcium[0,0]
-            self.STDPtracker[3,t] = self.TC_RS.P[0,0]
-            self.STDPtracker[4,t] = self.TC_RS.D[0,0]
-            self.STDPtracker[5,t] = self.TC_RS.g[0,0]-self.TC_RS_initWeight[0,0]
-            self.STDPtracker[6,t] = self.FS.Vm[0,t]
-            self.STDPtracker[7,t] = self.RS.g_inhib[0]
-            self.STDPtracker[8,t] = self.RS.g_excit[0]
-            self.STDPtracker[9,t] = self.TC.OP_NMDA[0,0]
-            self.STDPtracker[10,t] = self.TC_RS.Mg[0,0]
-            self.STDPtracker[11,t] = self.TC_RS.I_VGCC[0,0]
-            self.STDPtracker[12,t] = self.TC_RS.B[0,0]
-            
-            self.calciumTracker[0,t] = self.TC_RS.calcium[0,0]
-            self.CaDetectorsTracker[0,t] = self.TC_RS.P[0,0]
-            self.CaDetectorsTracker[1,t] = self.TC_RS.D[0,0]
-            self.CaDetectorsTracker[2,t] = self.TC_RS.B[0,0]
-            self.CaDetectorsTracker[3,t] = self.TC_RS.V[0,0]
-            
-            if not self.STDPplot: 
-                self.trackValue(t)
-                if self.ODC_evol and np.mod(t*self.dt,1000)==0: self.showODC(t*self.dt)
-                if self.TC_RS_evol and np.mod(t*self.dt,1000)==0:self.showTC_RS(t*self.dt)
+            if not self.STDPplot: self.trackValue(t)
             
             if np.mod(t*self.dt,int(self.trialDuration/50))==0: 
                 i=int(t*self.dt/int(self.trialDuration/50))
@@ -581,99 +546,54 @@ class CompSim():
                 sys.stdout.write("[%-50s] %d%% done in: %d min %d sec" % ('='*i, 2*i, int((timeLeft)/60), int(np.mod((timeLeft),60)) ))
                 sys.stdout.flush()
         
-        # returns the change in synaptic conductance
+        # returns the change in synaptic conductance for STDP plot
         if self.STDPplot: return self.TC_RS.g[0,0]-self.TC_RS_initWeight[0,0]
+        
         print "\nrun time:", int((time.time()-tic_run)/60), 'min,',  int(np.mod((time.time()-tic_run),60)), 'sec'
-        file = open('trialDump', 'w')
-        pickle.dump(self.RS,file)
-        file.close()
+        
+        #save neuron variables to file
+        tic_pickle = time.time()
+        pFile = open('../output/neurons', 'w')
+        pickle.dump({'TC':self.TC, 'FS':self.FS, 'RS':self.RS}, pFile, protocol=2)
+        pFile.close()
+        
+        #save synapse parameters to file
+        pFile = open('../output/synParam', 'w')
+        pickle.dump({'TC_RS':self.TC_RS, 'FS_RS':self.FS_RS, 'RS_FS':self.RS_FS, 'RS_RS':self.RS_RS}, pFile, protocol=2)
+        pFile.close()
+        
+        #save synapse variables to file
+        pFile = open('../output/synTracker', 'w')
+        pickle.dump(self.allSynTracker, pFile, protocol=2)
+        pFile.close()
+        
+        #save TC_RS weights to file
+        pFile = open('../output/weights', 'w')
+        pickle.dump({'w':self.TC_RS_gTracker, 'time':self.timeStamp}, pFile, protocol=2)
+        pFile.close()
+        
+        #save simulation paramters to file
+        pFile = open('../output/genParam', 'w')
+        pickle.dump({'numPattern':self.numPattern, 'dt':self.dt, 'trialDuration':self.trialDuration, 'timeArray':self.time_array}, pFile, protocol=2)
+        pFile.close()
+        print "\npickle time:", int((time.time()-tic_pickle)/60), 'min,',  int(np.mod((time.time()-tic_pickle),60)), 'sec'
      
     def trackValue(self, t):
-        """ track different values """
+        """ track synaptic variables """
         
-        self.OPTracker[0,t]=self.TC.OP_NMDA[0]
-                          
-        self.valueTracker[1,t] = self.TC_RS.Vm[0,0]
-        self.valueTracker[2,t] = self.TC_RS.Vm[1,0]
-        self.valueTracker[3,t] = self.TC_RS.Vm[2,0]
-        self.valueTracker[4,t] = self.TC_RS.Vm[3,0]
-        self.valueTracker[5,t] = self.TC_RS.Vm[4,0]
-        self.valueTracker[6,t] = self.TC_RS.Vm[5,0]
+        for n in self.allSynTracker:
+            n.I_NMDA[:,t] = self.TC_RS.I_NMDA[:,n.neuronID]
+            n.I_VGCC = self.TC_RS.I_VGCC[:,n.neuronID]
+            n.I = self.TC_RS.I[:,n.neuronID]
+            n.Vm = self.TC_RS.Vm[:,n.neuronID]
+            n.Mg = self.TC_RS.Mg[:,n.neuronID]
+            n.g = self.TC_RS.g[:,n.neuronID]
+            n.calcium = self.TC_RS.calcium[:,n.neuronID]
+            n.P = self.TC_RS.P[:,n.neuronID]
+            n.V = self.TC_RS.V[:,n.neuronID]
+            n.B = self.TC_RS.B[:,n.neuronID]
+            n.D = self.TC_RS.D[:,n.neuronID]
         
-        self.weightTracker[0,t]  = np.mean(self.TC_RS.g[[0,5,10,15],self.RS1])#RS neuron 1 \
-        self.weightTracker[1,t]  = np.mean(self.TC_RS.g[[1,5, 9,13],self.RS1])
-        self.weightTracker[2,t]  = np.mean(self.TC_RS.g[[2,6,10,14],self.RS1])
-        self.weightTracker[3,t]  = np.mean(self.TC_RS.g[[3,6, 9,12],self.RS1])
-        self.weightTracker[4,t]  = np.mean(self.TC_RS.g[[0,5,10,15],self.RS2])#RS neuron 2 \
-        self.weightTracker[5,t]  = np.mean(self.TC_RS.g[[1,5, 9,13],self.RS2])
-        self.weightTracker[6,t]  = np.mean(self.TC_RS.g[[2,6,10,14],self.RS2])
-        self.weightTracker[7,t]  = np.mean(self.TC_RS.g[[3,6, 9,12],self.RS2])
-        self.weightTracker[8,t]  = np.mean(self.TC_RS.g[[0,5,10,15],self.RS3])#RS neuron 3 \
-        self.weightTracker[9,t]  = np.mean(self.TC_RS.g[[1,5, 9,13],self.RS3])
-        self.weightTracker[10,t] = np.mean(self.TC_RS.g[[2,6,10,14],self.RS3])
-        self.weightTracker[11,t] = np.mean(self.TC_RS.g[[3,6, 9,12],self.RS3])
-        self.weightTracker[12,t] = np.mean(self.TC_FS.g[[0,5,10,15],self.FS1])#FS neuron 1 \
-        self.weightTracker[13,t] = np.mean(self.TC_FS.g[[1,5, 9,13],self.FS1])
-        self.weightTracker[14,t] = np.mean(self.TC_FS.g[[2,6,10,14],self.FS1])
-        self.weightTracker[15,t] = np.mean(self.TC_FS.g[[3,6, 9,12],self.FS1])
-             
-        self.valueTracker[7,t]  = self.TC_RS.Vm[0,self.RS1]#RS neuron 1
-        self.valueTracker[8,t]  = self.RS.g_excit[self.RS1]
-        self.valueTracker[9,t]  = self.RS.g_inhib[self.RS1]
-        self.valueTracker[10,t] = self.TC_RS.P[0,self.RS1]
-        self.valueTracker[11,t] = self.TC_RS.D[0,self.RS1]
-        self.valueTracker[12,t] = self.TC_RS.Vm[0,self.RS2]#RS neuron 2
-        self.valueTracker[13,t] = self.RS.g_excit[self.RS2]
-        self.valueTracker[14,t] = self.RS.g_inhib[self.RS2]
-        self.valueTracker[15,t] = self.TC_RS.P[0,self.RS2]
-        self.valueTracker[16,t] = self.TC_RS.D[0,self.RS2]
-        self.valueTracker[17,t] = self.TC_RS.Vm[0,self.RS3]#RS neuron 3
-        self.valueTracker[18,t] = self.RS.g_excit[self.RS3]
-        self.valueTracker[19,t] = self.RS.g_inhib[self.RS3]
-        self.valueTracker[20,t] = self.TC_RS.P[0,self.RS3]
-        self.valueTracker[21,t] = self.TC_RS.D[0,self.RS3]
-        self.valueTracker[22,t] =  self.TC_FS.Vm[0,self.FS1]#FS neuron 1
-        self.valueTracker[23,t] =  self.FS.g_excit[self.FS1]
-        self.valueTracker[24,t] =  self.FS.g_inhib[self.FS1]
-        self.valueTracker[25,t] = self.TC_FS.P[0,self.FS1]
-        self.valueTracker[26,t] = self.TC_FS.D[0,self.FS1]
-    
-
-    def showODC(self, t=[]):
-        plt.figure(figsize=(7,7))
-        rootSize = np.sqrt(self.RS.size)
-        ODC_mat = np.zeros(self.RS.size)
-        alpha_mat = np.zeros(self.RS.size)
-        #create white color map with transparency gradient
-        cmap_trans = mpl.colors.LinearSegmentedColormap.from_list('my_cmap',['black','black'],256) 
-        cmap_trans._init()
-        alphas = np.linspace(1.0, 0, cmap_trans.N+3)
-        cmap_trans._lut[:,-1] = alphas
-        
-        for RS in range(self.RS.size):
-            prefPattern = [np.sum(self.TC_RS.g[[0,4,8,12],RS]),np.sum(self.TC_RS.g[[1,5,9,13],RS]),np.sum(self.TC_RS.g[[2,6,10,14],RS]),np.sum(self.TC_RS.g[[3,7,11,15],RS])]
-            ODC_mat[RS] = np.argmax(prefPattern)
-            alpha_mat[RS] = np.max(prefPattern)-(np.sum(prefPattern)-np.max(prefPattern))/self.numPattern
-#            ODC_mat[RS] = np.mean(self.TC_RS.g[[0,5,10,15],RS]) - np.mean(self.TC_RS.g[[3,6,9,12],RS])   
-        plt.imshow(np.reshape(ODC_mat, [rootSize, rootSize]),interpolation='nearest', cmap='Spectral', vmin=0,vmax=3) #color
-        plt.imshow(np.reshape(alpha_mat, [rootSize, rootSize]),interpolation='nearest', cmap=cmap_trans, vmin=-0.25,vmax=1.5) #transparency
-        plt.title('Ocular Dominance at ' + np.str(t) + 'ms')
-        if t == []: plt.savefig('../output/' + 'OcularDominance_final.png')
-        else: plt.savefig('../output/' + 'OcularDominance_' + np.str(int(t)) + '.png') 
-    
-    def showTC_RS(self, t=[]):
-        plt.figure()
-        rootSize = np.sqrt(np.size(self.TC_RS.g[:,0]))
-        for RS in range(self.RS.size):
-            plt.subplot(int(np.ceil(np.sqrt(self.RS.size))),int(np.ceil(np.sqrt(self.RS.size))), RS+1)
-            plt.imshow(np.reshape(self.TC_RS.g[:,RS],[rootSize, rootSize]), interpolation='nearest', vmin=0, vmax=self.TC_RS.g_max, cmap='bwr')
-            plt.gca().axes.get_xaxis().set_visible(False)
-            plt.gca().axes.get_yaxis().set_visible(False)
-            plt.subplots_adjust(bottom=0.1, right=0.8, top=0.9)
-        cax = plt.axes([0.85, 0.1, 0.075, 0.8])
-        plt.colorbar(cax=cax)
-        if t == []: plt.suptitle('Final TC->RS Weights')
-        else: plt.suptitle('TC->RS Weights at ' + np.str(t) + 'ms')
-        if t == []: plt.savefig('../output/' + 'TC-RS_final.png')
-        else: plt.savefig('../output/' + 'TC-RS_' + np.str(int(t)) + '.png')
-    
+        if np.mod(t,250)==0: 
+            self.TC_RS_gTracker[:,t/250] = np.reshape(np.copy(self.TC_RS.g),-1,1)
+            self.timeStamp[t/250] = t*self.dt

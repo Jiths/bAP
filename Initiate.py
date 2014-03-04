@@ -16,12 +16,13 @@ import matplotlib.pyplot as plt
 from CompSim import CompSim
 #@profile  
 def main(argv=None):
-        
+
         global sim
         sim = CompSim()
         sim.setParam()
         sim.createSynapses()
         sim.createPopulations()
+        sim.createSynTracker()
         sim.createConnectionPattern()
         sim.createInput()
         sim.runSimulation()
