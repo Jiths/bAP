@@ -7,7 +7,7 @@ Created on Nov 13, 2012
 import sys
 import cProfile
 
-#Force matplotlib to not use any Xwindows backend; comment out to plot on screen
+#Force matplotlib to not use any Xwindows backend; comment out to Plot_Print on screen
 import matplotlib
 matplotlib.use('Agg')
 
@@ -26,6 +26,7 @@ def main(argv=None):
         sim.createConnectionPattern()
         sim.createInput()
         sim.runSimulation()
+        sim.pickleValue()
 #         cProfile.run('sim.runSimulation()')
 #         sim.showResults()
         plt.show()

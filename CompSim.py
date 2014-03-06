@@ -21,7 +21,7 @@ class CompSim():
     '''
     This is the main simulation function.
     '''
-    def __init__(self, duration=500., dt=0.2):
+    def __init__(self, duration=1000., dt=0.2):
 
         self.tic_prep = time.time()
         
@@ -39,9 +39,9 @@ class CompSim():
         self.FS_FS = [1] #turns off lateral inhibition to inhibitory cells - leave empty for OFF, put 1 for ON
         self.gaussian = [] #whether 'intracortical' connections are distributed according to a Gaussian distribution. If not, follows a square wave
         np.random.seed(83251) #seeds the random number generator
-        
-        #Indices of RS neurons whose synaptic variables should be tracked
-        self.neuronToTrack = [0]
+        self.neuronsToTrack = ['0', '1', '3', '4', '5', '8'] #Indices of RS neurons whose synaptic variables should be tracked
+        self.RF_sampleTime = 50. #time interval at which to sample (take a snapshot) of the TC_RS weight (RF) -- in ms
+        self.plotRFbool = False #plot all RFs in .png file at the end of the simulation
       
     def setParam(self):
         
@@ -162,13 +162,13 @@ class CompSim():
         self.CaDetectorsTracker = np.zeros([5,self.trialDuration/self.dt+1]) #tracks value of the calcium detector variables
         self.STDPtracker = np.zeros([15,self.trialDuration/self.dt+1]) #tracks value for STDP plots
         self.percentChange = np.zeros(int(self.trialDuration/self.dt/500)+1) #tracks how much weight changed during the last time step
-        self.STDPplot = False #boolean used to plot the STDP curve - set to True by setParamSTDP()
+        self.STDPplot = False #boolean used to Plot_Print the STDP curve - set to True by setParamSTDP()
         self.stimPresentation = 500.0 #duration of presentation of a particular image patch 
         
         if not self.STDPplot: print "duration:", int(self.trialDuration), "ms\nTC:", self.TC_size, "\nRS:", self.RS_size, "\nFS:", self.FS_size
     
     def setParamSTDPplot(self):
-        """ sets the  parameter values for the STDP plot """
+        """ sets the  parameter values for the STDP Plot_Print """
                
         self.RS_RS_G = 0.0
         self.RS_FS_G = 0.0
@@ -198,7 +198,7 @@ class CompSim():
         self.STDPplot = True
         
     def resetValueSTDPplot(self):
-        """ resets variables between each iteration of the STDP plot function """        
+        """ resets variables between each iteration of the STDP Plot_Print function """        
         
         for neuron in [self.TC, self.RS, self.FS]: 
             neuron.Vm = np.zeros([1,self.trialDuration/self.dt+1])
@@ -274,9 +274,9 @@ class CompSim():
     def createSynTracker(self):
         """ create objects to track the synaptic variables for a few selected neurons """
         
-        self.allSynTracker = []
-        for n in self.neuronToTrack:
-            self.allSynTracker.append(SynTracker(n, [self.TC_size, np.size(self.time_array)]))
+        self.allSynTracker = dict([])
+        for n in self.neuronsToTrack:
+            self.allSynTracker[str(n)] = SynTracker(n, [self.TC_size, np.size(self.time_array)])
             
         #creates an array to store synaptic weights over time
         self.TC_RS_gTracker = np.zeros([self.TC_size*self.RS_size, np.size(self.time_array)/250+1])
@@ -343,7 +343,7 @@ class CompSim():
                     np.fill_diagonal(syns.g, 0)
                     np.fill_diagonal(syns.g_max_matrix, 0)
                        
-                #plot weights
+                #Plot_Print weights
                 if False:
                     print "plotting weights of", syns.preName, "->", syns.postName
                     plt.figure()
@@ -433,17 +433,17 @@ class CompSim():
                 tmpSpikeTimes[~spikeTimes_Mask]=0
                 self.TC.spikeTimes[:,i*self.stimPresentation/self.dt:(i+1)*self.stimPresentation/self.dt] = tmpSpikeTimes[:,timeLow/self.dt:timeHigh/self.dt] #only consider times between timeLow and timeHigh
                 
-                if False: #plot image 
+                if False: #Plot_Print image 
                     plt.figure()
                     plt.imshow(self.allImages[:,:,imageIndex], cmap = 'gray', interpolation='nearest')
                     plt.title('whole image')
-            if True: #plot image patch
+            if True: #Plot_Print image patch
                 plt.figure()
                 plt.imshow(self.inputM, cmap = 'gray', interpolation='nearest', vmin=-1, vmax=1)
                 plt.title('image patch')
 #                    plt.show()
                 
-            if False: #plot image statistics
+            if False: #Plot_Print image statistics
                 plt.hist(self.allImages.reshape(-1), bins=100)
                 F1 = fftpack.fft2(self.allImages[:,:,5]) #performs fourier transform
                 F2 = fftpack.fftshift( F1 ) #shifts the FT so that low frequencies are at the center
@@ -462,13 +462,14 @@ class CompSim():
             spines are read by four calcium detectors (P, D, B and V) controlling synaptic plasticity. Plasticity is reflected in modifications of the 
             excitatory conductance of individual spines  """
         
-        #copy initial synaptic weights for STDP plot
+        print 'Simulation:'
+        #copy initial synaptic weights for STDP Plot_Print
         self.TC_RS_initWeight = np.copy(self.TC_RS.g[:,:])
 
         tic_run=time.time()
         for t in range(np.size(self.time_array)): #loop through all time steps of the trial
             
-            if self.STDPplot: #triggers spikes in the TC and RS; used to plot the STDP curve
+            if self.STDPplot: #triggers spikes in the TC and RS; used to Plot_Print the STDP curve
                 if np.mod(t*self.dt,1000)==40: self.TC.lastCellSpike=np.ones(np.shape(self.TC.lastCellSpike))*t #triggers a pre-synaptic spike at t=40ms
                 if np.mod(t*self.dt,1000)==40-isi: self.RS.Vm[0,t-1] = self.Vth + 10. #triggers a post-synaptic spike at t=40ms-isi
 #                if np.mod(t*self.dt,1000)==40-isi-2: self.FS.Vm[0,t-1] = self.Vth + 10. #triggers a spike in a FS neuron at t=40ms-isi-2ms
@@ -481,7 +482,7 @@ class CompSim():
                 #2- compute currents & associated voltage changes for the neurons that didn't spike during last time step
                 I_leak = self.g_leak*(self.E_leak-pops.Vm[~pastSpikes,t-1]) #leakage current
                 I_inj = pops.Ie[~pastSpikes] #injected current
-                I_ref = pops.Rm*pops.Gref[~pastSpikes]*(self.E_i-pops.Vm[~pastSpikes,t-1]) #refractory period current
+                I_ref = pops.Rm*pops.Gref[:,t-1][~pastSpikes]*(self.E_i-pops.Vm[~pastSpikes,t-1]) #refractory period current
                 I_syn = 0 #total synaptic currents (initialize)
                 for syns in pops.receivesFrom: #compute all the synaptic currents received by a population of neurons
                     syns.Mg = 1./(1.+np.exp(-0.092*(syns.Vm+13))*0.56) #compute the voltage-dependent blockade level of NMDAr by Mg
@@ -500,15 +501,15 @@ class CompSim():
                 else:
                         currentSpike = pops.Vm[:, t] >= self.Vth #find the neurons that reached threshold during the ongoing time step
                         pops.Vm[currentSpike,t] = self.Vspike #make those neurons spike
-                        pops.spikeTimes[currentSpike,t] = 1 #record all spike times for raster plot
+                        pops.spikeTimes[currentSpike,t] = 1 #record all spike times for raster Plot_Print
                         pops.lastCellSpike[currentSpike] = t #record last spike time
 
             self.TC.lastCellSpike[self.TC.spikeTimes[:,t]==1] = t #make the TC neuron spike based on their pre-determined firing rate
                 
             for pops in self.population: #loop through the populations and compute changes in conductance due to activity during the ongoing time step
                 #4- compute changes in refractory period conductance due to post-synaptic spikes
-                pops.Gref[(t-pops.lastCellSpike)<1./self.dt] = self.GrefMax
-                pops.Gref[(t-pops.lastCellSpike)>=1./self.dt] -= (pops.Gref[(t-pops.lastCellSpike)>=1./self.dt]/pops.tau_Gref)*self.dt
+                pops.Gref[:,t][(t-pops.lastCellSpike)<1./self.dt] = self.GrefMax
+                pops.Gref[:,t][(t-pops.lastCellSpike)>=1./self.dt] -= (pops.Gref[:,t][(t-pops.lastCellSpike)>=1./self.dt]/pops.tau_Gref)*self.dt
                 #5- compute the changes in conductance (OP) due to pre-synaptic spikes
                 deltaT = -(t-pops.lastCellSpike)*self.dt #time since last pre-synaptic spike
                 pops.OP[:,t] = (0.5*np.exp(deltaT/self.tau_ampaF)+0.5*np.exp(deltaT/self.tau_ampaS)) #compute AMPA OP
@@ -546,11 +547,13 @@ class CompSim():
                 sys.stdout.write("[%-50s] %d%% done in: %d min %d sec" % ('='*i, 2*i, int((timeLeft)/60), int(np.mod((timeLeft),60)) ))
                 sys.stdout.flush()
         
-        # returns the change in synaptic conductance for STDP plot
+        # returns the change in synaptic conductance for STDP Plot_Print
         if self.STDPplot: return self.TC_RS.g[0,0]-self.TC_RS_initWeight[0,0]
-        
         print "\nrun time:", int((time.time()-tic_run)/60), 'min,',  int(np.mod((time.time()-tic_run),60)), 'sec'
-        
+        if self.plotRFbool: self.plotRF() 
+
+    def pickleValue(self):
+        print 'Pickle:'
         #save neuron variables to file
         tic_pickle = time.time()
         pFile = open('../output/neurons', 'w')
@@ -574,26 +577,80 @@ class CompSim():
         
         #save simulation paramters to file
         pFile = open('../output/genParam', 'w')
-        pickle.dump({'numPattern':self.numPattern, 'dt':self.dt, 'trialDuration':self.trialDuration, 'timeArray':self.time_array}, pFile, protocol=2)
+        pickle.dump({'numPattern':self.numPattern, 'dt':self.dt, 'trialDuration':self.trialDuration, 'timeArray':self.time_array,
+                     'RF_sampleTime':self.RF_sampleTime, 'neuronsToTrack':self.neuronsToTrack}, pFile, protocol=2)
         pFile.close()
-        print "\npickle time:", int((time.time()-tic_pickle)/60), 'min,',  int(np.mod((time.time()-tic_pickle),60)), 'sec'
+        print "pickle time:", int((time.time()-tic_pickle)/60), 'min,',  int(np.mod((time.time()-tic_pickle),60)), 'sec'
      
     def trackValue(self, t):
         """ track synaptic variables """
         
-        for n in self.allSynTracker:
-            n.I_NMDA[:,t] = self.TC_RS.I_NMDA[:,n.neuronID]
-            n.I_VGCC = self.TC_RS.I_VGCC[:,n.neuronID]
-            n.I = self.TC_RS.I[:,n.neuronID]
-            n.Vm = self.TC_RS.Vm[:,n.neuronID]
-            n.Mg = self.TC_RS.Mg[:,n.neuronID]
-            n.g = self.TC_RS.g[:,n.neuronID]
-            n.calcium = self.TC_RS.calcium[:,n.neuronID]
-            n.P = self.TC_RS.P[:,n.neuronID]
-            n.V = self.TC_RS.V[:,n.neuronID]
-            n.B = self.TC_RS.B[:,n.neuronID]
-            n.D = self.TC_RS.D[:,n.neuronID]
+        for n in self.allSynTracker.keys():
+            self.allSynTracker[n].I_NMDA[:,t]  = self.TC_RS.I_NMDA  [:,int(n)]  
+            self.allSynTracker[n].I_VGCC[:,t]  = self.TC_RS.I_VGCC  [:,int(n)]
+            self.allSynTracker[n].I[:,t]       = self.TC_RS.I       [:,int(n)]
+            self.allSynTracker[n].Vm[:,t]      = self.TC_RS.Vm      [:,int(n)]
+            self.allSynTracker[n].Mg[:,t]      = self.TC_RS.Mg      [:,int(n)]
+            self.allSynTracker[n].g[:,t]       = self.TC_RS.g       [:,int(n)]
+            self.allSynTracker[n].calcium[:,t] = self.TC_RS.calcium [:,int(n)]
+            self.allSynTracker[n].P[:,t]       = self.TC_RS.P       [:,int(n)]
+            self.allSynTracker[n].V[:,t]       = self.TC_RS.V       [:,int(n)]
+            self.allSynTracker[n].B[:,t]       = self.TC_RS.B       [:,int(n)]
+            self.allSynTracker[n].D[:,t]       = self.TC_RS.D       [:,int(n)]
         
-        if np.mod(t,250)==0: 
-            self.TC_RS_gTracker[:,t/250] = np.reshape(np.copy(self.TC_RS.g),-1,1)
-            self.timeStamp[t/250] = t*self.dt
+        step_sample = self.RF_sampleTime/self.dt
+        if np.mod(t,step_sample)==0: 
+            self.TC_RS_gTracker[:,t/step_sample] = np.reshape(np.copy(self.TC_RS.g),-1,1)
+            self.timeStamp[t/step_sample] = t*self.dt
+
+    def plotRF(self):
+        if True: return
+        tic_plot = time.time()
+        print 'Plot:'
+        for t,i in zip(self.timeStamp,range(np.size(self.timeStamp))):
+#             if np.mod(t*self.dt,int(self.trialDuration/50))==0: 
+#                 j=int(t*self.dt/int(self.trialDuration/50))
+#                 timeLeft = -1
+#                 if j==0: timeStart = time.time()
+#                 else: timeLeft = (50-j)*(time.time()-timeStart)/j
+#                 sys.stdout.write('\r')
+#                 sys.stdout.write("[%-50s] %d%% done in: %d min %d sec" % ('='*j, 2*j, int((timeLeft)/60), int(np.mod((timeLeft),60)) ))
+#                 sys.stdout.flush()
+                 
+            if np.mod(t,200) == 0:
+                #plot color-coded map
+                squareW = np.reshape(self.TC_RS_gTracker[:,i], (self.TC.size, self.RS.size))    
+                plt.figure(figsize=(7,7))
+                rootSize = np.sqrt(self.RS.size)
+                ODC_mat = np.zeros(self.RS.size)
+                alpha_mat = np.zeros(self.RS.size)
+                #create white color map with transparency gradient
+                cmap_trans = mpl.colors.LinearSegmentedColormap.from_list('my_cmap',['black','black'],256) 
+                cmap_trans._init()
+                alphas = np.linspace(1.0, 0, cmap_trans.N+3)
+                cmap_trans._lut[:,-1] = alphas
+                 
+                for RS in range(self.RS.size):
+                    prefPattern = [np.sum(squareW[[0,4,8,12],RS]),np.sum(squareW[[1,5,9,13],RS]),np.sum(squareW[[2,6,10,14],RS]),np.sum(squareW[[3,7,11,15],RS])]
+                    ODC_mat[RS] = np.argmax(prefPattern)
+                    alpha_mat[RS] = np.max(prefPattern)-(np.sum(prefPattern)-np.max(prefPattern))/self.numPattern
+                #            ODC_mat[RS] = np.mean(self.TC_RS.g[[0,5,10,15],RS]) - np.mean(self.TC_RS.g[[3,6,9,12],RS])   
+                plt.imshow(np.reshape(ODC_mat, [rootSize, rootSize]),interpolation='nearest', cmap='Spectral', vmin=0,vmax=3) #color
+                plt.imshow(np.reshape(alpha_mat, [rootSize, rootSize]),interpolation='nearest', cmap=cmap_trans, vmin=-0.25,vmax=1.5) #transparency
+                plt.title('Ocular Dominance at ' + np.str(t) + 'ms')
+                plt.savefig('../output/' + 'codedMap/' + np.str(int(t)) + '.png')
+                 
+                #plot detailed map
+                plt.figure()
+                rootSize = np.sqrt(self.TC.size)
+                for RS in range(self.RS.size):
+                    plt.subplot(int(np.ceil(np.sqrt(self.RS.size))),int(np.ceil(np.sqrt(self.RS.size))), RS+1)
+                    plt.imshow(np.reshape(squareW[:,RS],[rootSize, rootSize]), interpolation='nearest', vmin=0, vmax=self.TC_RS.g_max, cmap='bwr')
+                    plt.gca().axes.get_xaxis().set_visible(False)
+                    plt.gca().axes.get_yaxis().set_visible(False)
+                    plt.subplots_adjust(bottom=0.1, right=0.8, top=0.9)
+                cax = plt.axes([0.85, 0.1, 0.075, 0.8])
+                plt.colorbar(cax=cax)
+                plt.suptitle('TC->RS Weights at ' + np.str(t) + 'ms')
+                plt.savefig('../output/' + 'detailedMap/' + np.str(int(t)) + '.png')
+        print "plot time:", int((time.time()-tic_plot)/60), 'min,',  int(np.mod((time.time()-tic_plot),60)), 'sec'

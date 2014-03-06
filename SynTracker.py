@@ -14,16 +14,19 @@ class SynTracker(object):
         '''
         
         self.neuronID = neuronID
+        self.synapseNum = size_time[0]
+        self.time = size_time[1]
         
         #synapse variables
 #         self.V_BPAP = zeros(1) #depolarization due to the back-propagating action-potential
-        self.I_NMDA = zeros(size_time) #Ca2+ current through NMDAr
-        self.I_VGCC = zeros(size_time) #Ca2+ current through voltage-gated calcium channels
-        self.I = zeros(size_time) #current through AMPAr and GABAr
         self.Vm = zeros(size_time) #local membrane potential at the synapse
-        self.Mg = zeros(size_time) #extent of the Mg blockade of the NMDAr
         self.g = zeros(size_time) #synaptic weights 
         self.calcium = zeros(size_time) #internal "calcium" concentration, used to compute LTD
+        self.Mg = zeros(size_time) #extent of the Mg blockade of the NMDAr
+        self.I = zeros(size_time) #current through AMPAr and GABAr
+        self.I_NMDA = zeros(size_time) #Ca2+ current through NMDAr
+        self.I_VGCC = zeros(size_time) #Ca2+ current through voltage-gated calcium channels
+             
         
         #calcium detectors
         self.P=zeros(size_time)

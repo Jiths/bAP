@@ -39,16 +39,16 @@ def main(argv=None):
             plt.plot(sim.time_array, sim.STDPtracker[0,:], 'k') #soma Vm
             plt.plot(sim.time_array, sim.STDPtracker[1,:], 'b') #spine Vm
             plt.plot(sim.time_array, sim.STDPtracker[2,:], 'k') #spine calcium
-#            plt.plot(sim.time_array, sim.STDPtracker[3,:]*50-20, 'b') #P
-#            plt.plot(sim.time_array, sim.STDPtracker[4,:]*100, 'r') #D
+#            plt.Plot_Print(sim.time_array, sim.STDPtracker[3,:]*50-20, 'b') #P
+#            plt.Plot_Print(sim.time_array, sim.STDPtracker[4,:]*100, 'r') #D
             plt.plot(sim.time_array, sim.STDPtracker[5,:]*1000-40, 'k') #delta g
-#            plt.plot(sim.time_array, sim.STDPtracker[6,:], 'r') #FS Vm
-#            plt.plot(sim.time_array, sim.STDPtracker[7,:], 'r') #inhibibitory conductance
-#            plt.plot(sim.time_array, sim.STDPtracker[8,:], 'b') #excitatory conductance
-#            plt.plot(sim.time_array, sim.STDPtracker[9,:]*10, 'b') #OP NMDAR due to Glu
-#            plt.plot(sim.time_array, sim.STDPtracker[10,:]*10, 'r') #OP NMDAR due to bAP
-#            plt.plot(sim.time_array, sim.STDPtracker[11,:]*10, 'k') #OP VGCC
-#            plt.plot(sim.time_array, sim.STDPtracker[12,:], 'b') #B
+#            plt.Plot_Print(sim.time_array, sim.STDPtracker[6,:], 'r') #FS Vm
+#            plt.Plot_Print(sim.time_array, sim.STDPtracker[7,:], 'r') #inhibibitory conductance
+#            plt.Plot_Print(sim.time_array, sim.STDPtracker[8,:], 'b') #excitatory conductance
+#            plt.Plot_Print(sim.time_array, sim.STDPtracker[9,:]*10, 'b') #OP NMDAR due to Glu
+#            plt.Plot_Print(sim.time_array, sim.STDPtracker[10,:]*10, 'r') #OP NMDAR due to bAP
+#            plt.Plot_Print(sim.time_array, sim.STDPtracker[11,:]*10, 'k') #OP VGCC
+#            plt.Plot_Print(sim.time_array, sim.STDPtracker[12,:], 'b') #B
 #            plt.ylim(-1,10)
 
         print "delta W =", sim.STDPtracker[5,-1]
@@ -56,8 +56,8 @@ def main(argv=None):
         if False: #displays the STDP curve
             plt.figure()
             plt.plot(isi, deltaW, 'ok')
-#            plt.plot(isi, P/2000, 'ob-')
-#            plt.plot(isi, D/2000, 'or-')
+#            plt.Plot_Print(isi, P/2000, 'ob-')
+#            plt.Plot_Print(isi, D/2000, 'or-')
             plt.xlabel('interspike interval (post-pre)')
             plt.ylabel('change in synaptic weight')
             plt.axhline(0)

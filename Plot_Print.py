@@ -16,31 +16,31 @@ from CompSim import CompSim
 sim = CompSim()
 
 def main(argv=None):
-        #load data
-        global neurons, synapses, synParam, weights, genParam
-        
-        pFile = open('../output/neurons', 'r')
-        neurons = pickle.load(pFile)
-        pFile.close()
-        
-        pFile = open('../output/synTracker', 'r')
-        synapses = pickle.load(pFile)
-        pFile.close()
-        
-        pFile = open('../output/synParam', 'r')
-        synParam = pickle.load(pFile)
-        pFile.close()
-        
-        pFile = open('../output/weights', 'r')
-        weights = pickle.load(pFile)
-        pFile.close()
-        
-        pFile = open('../output/genParam', 'r')
-        genParam = pickle.load(pFile)
-        pFile.close()
-        
-        toPlot()
-        plot()
+    #load data
+    global neurons, synapses, synParam, weights, genParam
+    
+    pFile = open('../output/neurons', 'r')
+    neurons = pickle.load(pFile)
+    pFile.close()
+    
+    pFile = open('../output/synTracker', 'r')
+    synapses = pickle.load(pFile)
+    pFile.close()
+    
+    pFile = open('../output/synParam', 'r')
+    synParam = pickle.load(pFile)
+    pFile.close()
+    
+    pFile = open('../output/weights', 'r')
+    weights = pickle.load(pFile)
+    pFile.close()
+    
+    pFile = open('../output/genParam', 'r')
+    genParam = pickle.load(pFile)
+    pFile.close()
+    
+    toPlot()
+    plot()
 
 def toPlot():
     global traces, ODM

@@ -30,12 +30,13 @@ class Population(object):
         
         #neuron variables
         self.Vm = zeros(size_time)
-        self.Vm[:,-1] = sim.E_leak
-        self.Gref = zeros(size)
-        self.lastCellSpike = ones(size)*-1e99
         self.spikeTimes = zeros(size_time)
         self.OP = zeros(size_time)
         self.OP_NMDA = zeros(size_time)
         self.BPAP = zeros(size_time)
         self.g_excit = zeros(size_time)
         self.g_inhib = zeros(size_time)
+        self.Gref = zeros(size_time)
+        
+        self.Vm[:,-1] = sim.E_leak
+        self.lastCellSpike = ones(size)*-1e99
