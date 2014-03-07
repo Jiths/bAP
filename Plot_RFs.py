@@ -7,7 +7,6 @@ Created on Mar 4, 2014
 from Tkinter import *
 import Tkinter as Tk
 import matplotlib
-matplotlib.use('TkAgg')
 import numpy as np
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
 from matplotlib.figure import Figure
@@ -90,8 +89,8 @@ class Plot_RFs(Tk.Tk):
         m = np.mod(float(self.RFtime.get()),self.root.genParam['RF_sampleTime'])
         round_t = np.floor(float(self.RFtime.get())/self.root.genParam['RF_sampleTime'])*self.root.genParam['RF_sampleTime'] + np.round(m*2,-2)/2
         
-        if round_t/self.root.genParam['RF_sampleTime']>=np.size(self.root.weights['w'],1): #checks for out of bound requested time
-            round_t = (np.size(self.root.weights['w'],1)-1)*self.root.genParam['RF_sampleTime']
+        if round_t/self.root.genParam['RF_sampleTime']>=np.size(self.root.weights['w'],2): #checks for out of bound requested time
+            round_t = (np.size(self.root.weights['w'],2)-1)*self.root.genParam['RF_sampleTime']
             self.mainFig.text(0.5,0.5,'time out-of-bound',bbox=dict(facecolor='red', alpha=0.8), horizontalalignment='center', verticalalignment='center')
             self.canvas.show()
         
@@ -114,7 +113,7 @@ class Plot_RFs(Tk.Tk):
         t = int(self.RFtime.get())
         i = int(t/self.root.genParam['RF_sampleTime'])
         
-        squareW = np.reshape(self.root.weights['w'][:,i], (self.root.neurons['TC'].size, self.root.neurons['RS'].size))    
+        squareW = self.root.weights['w'][:,:,i]    
         rootSize = np.sqrt(self.root.neurons['RS'].size)
         ODC_mat = np.zeros(self.root.neurons['RS'].size)
         alpha_mat = np.zeros(self.root.neurons['RS'].size)
@@ -146,7 +145,7 @@ class Plot_RFs(Tk.Tk):
         i = t/self.root.genParam['RF_sampleTime']
         
         rootSize = np.sqrt(self.root.neurons['TC'].size)
-        squareW = np.reshape(self.root.weights['w'][:,i], (self.root.neurons['TC'].size, self.root.neurons['RS'].size))
+        squareW = self.root.weights['w'][:,:,i]
         for RS in range(self.root.neurons['RS'].size):
             subplt = self.mainFig.add_subplot(int(np.ceil(np.sqrt(self.root.neurons['RS'].size))),int(np.ceil(np.sqrt(self.root.neurons['RS'].size))), RS+1)
             subplt.imshow(np.reshape(squareW[:,RS],[rootSize, rootSize]), interpolation='nearest', vmin=0, vmax=self.root.synParam['TC_RS'].g_max, cmap='bwr')

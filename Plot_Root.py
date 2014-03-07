@@ -8,7 +8,6 @@ from Tkinter import *
 import Tkinter as Tk
 import ttk
 import matplotlib
-matplotlib.use('TkAgg')
 import numpy as np
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
 from matplotlib.figure import Figure
@@ -55,17 +54,20 @@ class Plot_Root(Tk.Tk):
         
         #create mainFrame widget
         mainFrame = Tk.Frame(self, borderwidth=5, relief='sunken')
-        mainFrame.grid(column=0, row=0, sticky=(N, W, E, S), padx=(10,10), pady=(10,10))
+        mainFrame.grid(column=0, row=0, sticky=(N, W, E, S), padx=(5,5), pady=(5,5))
         
         #create click buttons
         button = Tk.Button(mainFrame, text='new trace GUI',  command=self.launchTracesGUI)
-        button.grid(column=0, row=0, sticky=(W, E), padx=(10,10), pady=(10,10))
+        button.grid(column=0, row=0, sticky=(W, E), padx=(5,5), pady=(5,5))
         
         button = Tk.Button(mainFrame, text='new RF GUI',  command=self.launchRFsGUI)
-        button.grid(column=1, row=0, sticky=(W, E), padx=(10,10), pady=(10,10))
+        button.grid(column=1, row=0, sticky=(W, E), padx=(5,5), pady=(5,5))
+        
+        button = Tk.Button(mainFrame, text='refresh root',  command=self.loadData)
+        button.grid(column=2, row=0, sticky=(W, E), padx=(5,5), pady=(5,5))
         
         button = Tk.Button(mainFrame, text='close all GUI',  command=self.closeAll)
-        button.grid(column=2, row=0, sticky=(W, E), padx=(10,10), pady=(10,10))
+        button.grid(column=3, row=0, sticky=(W, E), padx=(5,5), pady=(5,5))
 
     
     def launchTracesGUI(self):

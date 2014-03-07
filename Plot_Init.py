@@ -5,6 +5,8 @@ Created on Mar 4, 2014
 '''
 
 import sys
+import matplotlib
+matplotlib.use('GTK')
 from Plot_Root import Plot_Root
 from Plot_Traces import Plot_Traces
 

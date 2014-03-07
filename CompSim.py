@@ -16,12 +16,11 @@ from SynTracker import SynTracker
 import cPickle as pickle
 import sys
 
-
 class CompSim():
     '''
     This is the main simulation function.
     '''
-    def __init__(self, duration=1000., dt=0.2):
+    def __init__(self, duration=2000., dt=0.2):
 
         self.tic_prep = time.time()
         
@@ -39,7 +38,7 @@ class CompSim():
         self.FS_FS = [1] #turns off lateral inhibition to inhibitory cells - leave empty for OFF, put 1 for ON
         self.gaussian = [] #whether 'intracortical' connections are distributed according to a Gaussian distribution. If not, follows a square wave
         np.random.seed(83251) #seeds the random number generator
-        self.neuronsToTrack = ['0', '1', '3', '4', '5', '8'] #Indices of RS neurons whose synaptic variables should be tracked
+        self.neuronsToTrack = ['0', '1', '2', '3', '4', '5', '6'] #Indices of RS neurons whose synaptic variables should be tracked
         self.RF_sampleTime = 50. #time interval at which to sample (take a snapshot) of the TC_RS weight (RF) -- in ms
         self.plotRFbool = False #plot all RFs in .png file at the end of the simulation
       
@@ -279,7 +278,7 @@ class CompSim():
             self.allSynTracker[str(n)] = SynTracker(n, [self.TC_size, np.size(self.time_array)])
             
         #creates an array to store synaptic weights over time
-        self.TC_RS_gTracker = np.zeros([self.TC_size*self.RS_size, np.size(self.time_array)/250+1])
+        self.TC_RS_gTracker = np.zeros([self.TC_size, self.RS_size, np.size(self.time_array)/250+1])
         self.timeStamp = np.zeros(np.size(self.time_array)/250+1)
     
     def createConnectionPattern(self):
@@ -365,21 +364,27 @@ class CompSim():
         if not self.naturalImage:
             #creates inputs: either four vertical lines or two diagonal lines
             isi = np.random.uniform(low=29, high=50, size=self.TC.size)
+            pat1=[]
+            pat2=[]
+            pat3=[]
+            pat4=[]
             for i in range(self.TC.size):
                 if self.numPattern == 2:
-                    #if np.mod(i,np.sqrt(self.TC.size)+1)==0: isi[i] = 41 # /
-                    #if np.mod(i,np.sqrt(self.TC.size)-1)==0 and i!=0 and i!=self.TC.size-1: isi[i] = 41 # \
-                    if np.mod(i,4)==0:isi[i] = 41
-                    if np.mod(i,4)==1:isi[i] = 41
-                elif self.numPattern == 3:
-                    if np.mod(i,4)==0:isi[i] = 41
-                    if np.mod(i,4)==1:isi[i] = 41
-                    if np.mod(i,4)==2:isi[i] = 41
-                elif self.numPattern == 4:
-                    if np.mod(i,4)==0:isi[i] = 41
-                    if np.mod(i,4)==1:isi[i] = 41
-                    if np.mod(i,4)==2:isi[i] = 41
-                    if np.mod(i,4)==3:isi[i] = 41
+                    if np.mod(i,4)==0:
+                        isi[i] = 41
+                        pat1.append(i)
+                    if np.mod(i,4)==1:
+                        isi[i] = 41
+                        pat2.append(i)
+                if self.numPattern == 3:
+                    if np.mod(i,4)==2:
+                        isi[i] = 41
+                        pat3.append(i)
+                if self.numPattern == 4:
+                    if np.mod(i,4)==3:
+                        isi[i] = 41
+                        pat4.append(i)
+            self.allPats={'pat1':pat1,'pat2':pat2,'pat3':pat3,'pat4':pat4}
 
             #fill in the spike time array based on the interspike interval
             isi = np.reshape(np.floor(isi/self.dt), [self.TC.size,1])
@@ -391,7 +396,6 @@ class CompSim():
             
             for i in range(self.TC.size): # roll the firing times of each pattern to create an offset in the patterns
                 if self.numPattern == 2:
-                    #if np.mod(i,np.sqrt(self.TC.size)+1)==0: self.TC.spikeTimes[i] = np.roll(self.TC.spikeTimes[i],int((41/2)/self.dt))
                     if np.mod(i,4)==1: self.TC.spikeTimes[i] = np.roll(self.TC.spikeTimes[i],int((41/2)/self.dt))
                 if self.numPattern == 3:
                     if np.mod(i,4)==1: self.TC.spikeTimes[i] = np.roll(self.TC.spikeTimes[i],int((41/3)/self.dt))
@@ -497,19 +501,19 @@ class CompSim():
                 pops.Vm[~pastSpikes, t] = pops.Vm[~pastSpikes,t-1] + (I_leak + I_inj + I_ref + I_syn)/pops.Tau_m*self.dt #increment Vm at the cell soma
                 
                 #3- make the neurons that reached threshold during the ongoing time step spike
-                if t*self.dt>6000 and pops.name == 'FS' and (t-self.TC.lastCellSpike[0])*self.dt<10.:thrashThis=0 #added to remove inhibition after a spike in the TC neuron 0 (input pattern 1)
-                else:
-                        currentSpike = pops.Vm[:, t] >= self.Vth #find the neurons that reached threshold during the ongoing time step
-                        pops.Vm[currentSpike,t] = self.Vspike #make those neurons spike
-                        pops.spikeTimes[currentSpike,t] = 1 #record all spike times for raster Plot_Print
-                        pops.lastCellSpike[currentSpike] = t #record last spike time
+#                 if False:thrashThis=0 #t*self.dt>6000 and pops.name == 'FS' and (t-self.TC.lastCellSpike[0])*self.dt<10.: #added to remove inhibition after a spike in the TC neuron 0 (input pattern 1)
+#                 else:
+                currentSpike = pops.Vm[:, t] >= self.Vth #find the neurons that reached threshold during the ongoing time step
+                pops.Vm[currentSpike,t] = self.Vspike #make those neurons spike
+                pops.spikeTimes[currentSpike,t] = 1 #record all spike times for raster Plot_Print
+                pops.lastCellSpike[currentSpike] = t #record last spike time
 
             self.TC.lastCellSpike[self.TC.spikeTimes[:,t]==1] = t #make the TC neuron spike based on their pre-determined firing rate
                 
             for pops in self.population: #loop through the populations and compute changes in conductance due to activity during the ongoing time step
                 #4- compute changes in refractory period conductance due to post-synaptic spikes
                 pops.Gref[:,t][(t-pops.lastCellSpike)<1./self.dt] = self.GrefMax
-                pops.Gref[:,t][(t-pops.lastCellSpike)>=1./self.dt] -= (pops.Gref[:,t][(t-pops.lastCellSpike)>=1./self.dt]/pops.tau_Gref)*self.dt
+                pops.Gref[:,t][(t-pops.lastCellSpike)>=1./self.dt] = pops.Gref[:,t-1][(t-pops.lastCellSpike)>=1./self.dt] - (pops.Gref[:,t-1][(t-pops.lastCellSpike)>=1./self.dt]/pops.tau_Gref)*self.dt
                 #5- compute the changes in conductance (OP) due to pre-synaptic spikes
                 deltaT = -(t-pops.lastCellSpike)*self.dt #time since last pre-synaptic spike
                 pops.OP[:,t] = (0.5*np.exp(deltaT/self.tau_ampaF)+0.5*np.exp(deltaT/self.tau_ampaS)) #compute AMPA OP
@@ -517,13 +521,14 @@ class CompSim():
                 
             for pops in self.population:
                 if pops.name == 'RS': #compute the difference between inhibitory and excitatory conductance; used to suppress BPAP
-                    pops.g_excit[:,t] = np.sum(95*self.RS_RS.g*self.RS.OP[:,t],0) #total excitatory conductance
-                    pops.g_inhib[:,t] = np.sum(375*self.FS_RS.g*self.FS.OP[:,t],0) #total inhibitory conductance 
+                    pops.g_excit[:,t] = np.sum(95*self.RS_RS.g*self.RS.OP[:,t][:,np.newaxis],0) #total excitatory conductance
+                    pops.g_inhib[:,t] = np.sum(375*self.FS_RS.g*self.FS.OP[:,t][:,np.newaxis],0) #total inhibitory conductance
                     I_tot = np.clip(-0.072*(pops.g_inhib[:,t]-pops.g_excit[:,t])+1.0,0,1) #linear relationship between g_inhib-g_excit and BPAP amplitude decrease, clipped to max=1
                 else: I_tot = np.ones(pops.size)
-                mask = np.logical_and(-deltaT>=1.2,-deltaT<=2.2) #triggers a BPAP in the spines from 1.2ms to 2.2ms after a spike at the soma
+                deltaT = -(t-pops.lastCellSpike)*self.dt #time since last pre-synaptic spike
+                mask = np.logical_and(-deltaT>=1.0,-deltaT<=2.0) #triggers a BPAP in the spines from 1.0ms to 2.0ms after a spike at the soma
                 pops.BPAP[:,t][mask] = I_tot[mask] #the amplitude of the BPAP is decreased proportionally to EPSC and IPSC.
-                pops.BPAP[:,t][~mask] = 0. #BPAPs are simulated as square waves; set to zero 2.2ms after spike initiation at the soma 
+                pops.BPAP[:,t][~mask] = 0. #BPAPs are simulated as square waves; set to zero 2.0ms after spike initiation at the soma 
 
             #7- compute changes in synaptic efficacy (plasticity) - only TC->RS synapses exhibit plasticity
             for syns in self.synapses:
@@ -578,7 +583,7 @@ class CompSim():
         #save simulation paramters to file
         pFile = open('../output/genParam', 'w')
         pickle.dump({'numPattern':self.numPattern, 'dt':self.dt, 'trialDuration':self.trialDuration, 'timeArray':self.time_array,
-                     'RF_sampleTime':self.RF_sampleTime, 'neuronsToTrack':self.neuronsToTrack}, pFile, protocol=2)
+                     'RF_sampleTime':self.RF_sampleTime, 'neuronsToTrack':self.neuronsToTrack, 'allPats':self.allPats}, pFile, protocol=2)
         pFile.close()
         print "pickle time:", int((time.time()-tic_pickle)/60), 'min,',  int(np.mod((time.time()-tic_pickle),60)), 'sec'
      
@@ -600,11 +605,11 @@ class CompSim():
         
         step_sample = self.RF_sampleTime/self.dt
         if np.mod(t,step_sample)==0: 
-            self.TC_RS_gTracker[:,t/step_sample] = np.reshape(np.copy(self.TC_RS.g),-1,1)
+            self.TC_RS_gTracker[:,:,t/step_sample] = self.TC_RS.g
             self.timeStamp[t/step_sample] = t*self.dt
 
     def plotRF(self):
-        if True: return
+#         if True: return
         tic_plot = time.time()
         print 'Plot:'
         for t,i in zip(self.timeStamp,range(np.size(self.timeStamp))):
