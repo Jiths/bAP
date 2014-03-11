@@ -15,11 +15,13 @@ import cPickle as pickle
 
 class Plot_Traces(Tk.Tk):
     
-    def __init__(self, root):
+    def __init__(self, root, folder):
         Tk.Tk.__init__(self)
-        self.title("trace GUI")
+        self.title('traces - ' + folder)
         
         self.root = root
+        self.folder = folder
+        self.protocol('WM_DELETE_WINDOW', self.closeGUI)
         self.createTracesGUI()
     
     def createTracesGUI(self):
@@ -294,29 +296,29 @@ class Plot_Traces(Tk.Tk):
         self.renewCanvas(False)
 
     def rasterPlotSelf(self, n):
-        spikesRS = np.argwhere(self.root.neurons['RS'].spikeTimes[n,:])
-        self.plt.plot(spikesRS*self.root.genParam['dt'],(self.root.neurons['TC'].size+5)*np.ones(len(spikesRS)),
+        spikesRS = np.argwhere(self.root.neurons[self.folder]['RS'].spikeTimes[n,:])
+        self.plt.plot(spikesRS*self.root.genParam[self.folder]['dt'],(self.root.neurons[self.folder]['TC'].size+5)*np.ones(len(spikesRS)),
                       'd', markerfacecolor='y', markeredgecolor='k', markeredgewidth=2, markersize=6)
         
     def rasterPlotTC(self, pop):
-        colorPlot = np.array(['k' for neuron in range(self.root.neurons[pop].size)])
-        colorPlot[self.root.genParam['allPats']['pat1']]='r'
-        colorPlot[self.root.genParam['allPats']['pat2']]='b'
-        colorPlot[self.root.genParam['allPats']['pat3']]='y'
-        colorPlot[self.root.genParam['allPats']['pat4']]='c'
-        for neuron in range(self.root.neurons[pop].size):
-            spikes = np.argwhere(self.root.neurons[pop].spikeTimes[neuron,:])
-            self.plt.scatter(spikes*self.root.genParam['dt'],neuron*np.ones(len(spikes)), 
+        colorPlot = np.array(['k' for neuron in range(self.root.neurons[self.folder][pop].size)])
+        colorPlot[self.root.genParam[self.folder]['allPats']['pat1']]='r'
+        colorPlot[self.root.genParam[self.folder]['allPats']['pat2']]='b'
+        colorPlot[self.root.genParam[self.folder]['allPats']['pat3']]='y'
+        colorPlot[self.root.genParam[self.folder]['allPats']['pat4']]='c'
+        for neuron in range(self.root.neurons[self.folder][pop].size):
+            spikes = np.argwhere(self.root.neurons[self.folder][pop].spikeTimes[neuron,:])
+            self.plt.scatter(spikes*self.root.genParam[self.folder]['dt'],neuron*np.ones(len(spikes)), 
                         marker='d', color=colorPlot[neuron])
             
     def rasterPlotRSFS(self, pop):
         colorPlot = {'RS':'|r', 'FS':'|b'}
         compress=0.5
-        offSet = self.root.neurons['TC'].size+10
-        if pop=='FS': offSet+=self.root.neurons['TC'].size*compress+5
-        for neuron in range(self.root.neurons[pop].size):
-            spikes = np.argwhere(self.root.neurons[pop].spikeTimes[neuron,:])
-            self.plt.plot(spikes*self.root.genParam['dt'],neuron*np.ones(len(spikes))*compress+offSet, colorPlot[pop])
+        offSet = self.root.neurons[self.folder]['TC'].size+10
+        if pop=='FS': offSet+=self.root.neurons[self.folder]['TC'].size*compress+5
+        for neuron in range(self.root.neurons[self.folder][pop].size):
+            spikes = np.argwhere(self.root.neurons[self.folder][pop].spikeTimes[neuron,:])
+            self.plt.plot(spikes*self.root.genParam[self.folder]['dt'],neuron*np.ones(len(spikes))*compress+offSet, colorPlot[pop])
                   
     def renewCanvas(self, event):
         #clear previous figure
@@ -332,10 +334,10 @@ class Plot_Traces(Tk.Tk):
         #plot variables
         p1=p2=p3=p4=p5=p6=p7=p8=p9=p10=p11=p12=p13=p14=p15=[]
         #neuron variables:
-        if self.Vm_neuron.get():  p1, = self.plt.plot(self.root.genParam['timeArray'],  self.root.neurons['RS'].Vm[n,:],            'k')
-        if self.g_excit.get():    p2, = self.plt.plot(self.root.genParam['timeArray'],  self.root.neurons['RS'].g_excit[n,:],       'r')
-        if self.g_inhib.get():    p3, = self.plt.plot(self.root.genParam['timeArray'],  self.root.neurons['RS'].g_inhib[n,:],       'b')
-        if self.G_ref.get():      p4, = self.plt.plot(self.root.genParam['timeArray'],  self.root.neurons['RS'].Gref[n,:]*8,        'k')
+        if self.Vm_neuron.get():  p1, = self.plt.plot(self.root.genParam[self.folder]['timeArray'],  self.root.neurons[self.folder]['RS'].Vm[n,:],            'k')
+        if self.g_excit.get():    p2, = self.plt.plot(self.root.genParam[self.folder]['timeArray'],  self.root.neurons[self.folder]['RS'].g_excit[n,:],       'r')
+        if self.g_inhib.get():    p3, = self.plt.plot(self.root.genParam[self.folder]['timeArray'],  self.root.neurons[self.folder]['RS'].g_inhib[n,:],       'b')
+        if self.G_ref.get():      p4, = self.plt.plot(self.root.genParam[self.folder]['timeArray'],  self.root.neurons[self.folder]['RS'].Gref[n,:]*8,        'k')
         if self.spikesSelf.get(): self.rasterPlotSelf(n)
         if self.spikesTC.get():   self.rasterPlotTC('TC')
         if self.spikesRS.get():   self.rasterPlotRSFS('RS')
@@ -343,17 +345,17 @@ class Plot_Traces(Tk.Tk):
         
         #synapse variables
         if self.neuronAvail:
-            if self.Vm_syn.get():     p5,  = self.plt.plot(self.root.genParam['timeArray'],  self.root.synapses[str(n)].Vm[s,:],            'k')
-            if self.g.get():          p6, = self.plt.plot(self.root.genParam['timeArray'],  self.root.synapses[str(n)].g[s,:]*100,          'k')
-            if self.calcium.get():    p7, = self.plt.plot(self.root.genParam['timeArray'],  self.root.synapses[str(n)].calcium[s,:]*8,      'k')
-            if self.Mg.get():         p8, = self.plt.plot(self.root.genParam['timeArray'],  self.root.synapses[str(n)].Mg[s,:]*50,          'k')
-            if self.I_syn.get():      p9, = self.plt.plot(self.root.genParam['timeArray'],  self.root.synapses[str(n)].I[s,:]*5,            'k')
-            if self.I_NMDA.get():     p10, = self.plt.plot(self.root.genParam['timeArray'],  self.root.synapses[str(n)].I_NMDA[s,:]*50,     'k')
-            if self.I_VGCC.get():     p11, = self.plt.plot(self.root.genParam['timeArray'],  self.root.synapses[str(n)].I_VGCC[s,:]*50,     'k')
-            if self.P.get():          p12, = self.plt.plot(self.root.genParam['timeArray'],  self.root.synapses[str(n)].P[s,:]*1000,        'k')
-            if self.B.get():          p13, = self.plt.plot(self.root.genParam['timeArray'],  self.root.synapses[str(n)].B[s,:]*10,          'k')
-            if self.D.get():          p14, = self.plt.plot(self.root.genParam['timeArray'],  self.root.synapses[str(n)].D[s,:]*500,         'k')
-            if self.V.get():          p15, = self.plt.plot(self.root.genParam['timeArray'],  self.root.synapses[str(n)].V[s,:]*30,          'k')
+            if self.Vm_syn.get():     p5,  = self.plt.plot(self.root.genParam[self.folder]['timeArray'],  self.root.synapses[self.folder][str(n)].Vm[s,:],            'k')
+            if self.g.get():          p6,  = self.plt.plot(self.root.genParam[self.folder]['timeArray'],  self.root.synapses[self.folder][str(n)].g[s,:]*100,          'k')
+            if self.calcium.get():    p7,  = self.plt.plot(self.root.genParam[self.folder]['timeArray'],  self.root.synapses[self.folder][str(n)].calcium[s,:]*8,      'k')
+            if self.Mg.get():         p8,  = self.plt.plot(self.root.genParam[self.folder]['timeArray'],  self.root.synapses[self.folder][str(n)].Mg[s,:]*50,          'k')
+            if self.I_syn.get():      p9,  = self.plt.plot(self.root.genParam[self.folder]['timeArray'],  self.root.synapses[self.folder][str(n)].I[s,:]*5,            'k')
+            if self.I_NMDA.get():     p10, = self.plt.plot(self.root.genParam[self.folder]['timeArray'],  self.root.synapses[self.folder][str(n)].I_NMDA[s,:]*50,     'k')
+            if self.I_VGCC.get():     p11, = self.plt.plot(self.root.genParam[self.folder]['timeArray'],  self.root.synapses[self.folder][str(n)].I_VGCC[s,:]*50,     'k')
+            if self.P.get():          p12, = self.plt.plot(self.root.genParam[self.folder]['timeArray'],  self.root.synapses[self.folder][str(n)].P[s,:]*1000,        'k')
+            if self.B.get():          p13, = self.plt.plot(self.root.genParam[self.folder]['timeArray'],  self.root.synapses[self.folder][str(n)].B[s,:]*10,          'k')
+            if self.D.get():          p14, = self.plt.plot(self.root.genParam[self.folder]['timeArray'],  self.root.synapses[self.folder][str(n)].D[s,:]*500,         'k')
+            if self.V.get():          p15, = self.plt.plot(self.root.genParam[self.folder]['timeArray'],  self.root.synapses[self.folder][str(n)].V[s,:]*30,          'k')
         
         #plot parameters
         self.plt.set_xlabel('time (ms)')
@@ -372,8 +374,8 @@ class Plot_Traces(Tk.Tk):
 
     def checkAvail(self, n, s):
         #check for out-of-bound neuron
-        if n>=np.size(self.root.neurons['RS'].g_excit,0):
-            n = np.size(self.root.neurons['RS'].g_excit,0)-1
+        if n>=np.size(self.root.neurons[self.folder]['RS'].g_excit,0):
+            n = np.size(self.root.neurons[self.folder]['RS'].g_excit,0)-1
             self.neuronNumber.set(str(n))
             self.neuronInput.delete(0, END)
             self.neuronInput.config(foreground='red')
@@ -383,8 +385,8 @@ class Plot_Traces(Tk.Tk):
         else: self.neuronInput.config(foreground='black')
         
         #check for out-of-bound neuron
-        if s>=self.root.neurons['TC'].size:
-            s = self.root.neurons['TC'].size-1
+        if s>=self.root.neurons[self.folder]['TC'].size:
+            s = self.root.neurons[self.folder]['TC'].size-1
             self.synapseNumber.set(str(s))
             self.synapseInput.delete(0, END)
             self.synapseInput.config(foreground='red')
@@ -394,9 +396,9 @@ class Plot_Traces(Tk.Tk):
         else: self.synapseInput.config(foreground='black')
         
         #check for neuron with unavailable synapse information
-        if self.neuronNumber.get() not in self.root.genParam['neuronsToTrack']:
+        if self.neuronNumber.get() not in self.root.genParam[self.folder]['neuronsToTrack']:
             tt = 'synapse information not available; use neurons '
-            for k in self.root.genParam['neuronsToTrack']: tt += k + ' '
+            for k in self.root.genParam[self.folder]['neuronsToTrack']: tt += k + ' '
             self.mainFig.text(0.02,0.95,tt,bbox=dict(facecolor='red', alpha=0.35))
             self.canvas.show()
             self.neuronAvail = False
@@ -429,5 +431,6 @@ class Plot_Traces(Tk.Tk):
             
         return n, s
 
-    def closeAll(self):
+    def closeGUI(self, all=False):
+        if not all: self.root.allGUI.remove(self)
         self.destroy()   

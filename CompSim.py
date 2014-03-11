@@ -20,7 +20,7 @@ class CompSim():
     '''
     This is the main simulation function.
     '''
-    def __init__(self, duration=2000., dt=0.2):
+    def __init__(self, duration=17000., dt=0.2):
 
         self.tic_prep = time.time()
         
@@ -37,10 +37,14 @@ class CompSim():
         self.RS_FS = [1] #turns off lateral excitation to inhibitory cells - leave empty for OFF, put 1 for ON
         self.FS_FS = [1] #turns off lateral inhibition to inhibitory cells - leave empty for OFF, put 1 for ON
         self.gaussian = [] #whether 'intracortical' connections are distributed according to a Gaussian distribution. If not, follows a square wave
-        np.random.seed(83251) #seeds the random number generator
+        self.seed = 2101
+        np.random.seed(self.seed) #seeds the random number generator
         self.neuronsToTrack = ['0', '1', '2', '3', '4', '5', '6'] #Indices of RS neurons whose synaptic variables should be tracked
         self.RF_sampleTime = 50. #time interval at which to sample (take a snapshot) of the TC_RS weight (RF) -- in ms
         self.plotRFbool = False #plot all RFs in .png file at the end of the simulation
+        self.disinhibition = np.zeros_like(self.time_array)
+        self.disinhibTime = 7000 #when inhibition should be removed for one of the pattern; set to 1e99 for no disinhibition
+        self.reinhibTime = 14000 #when inhibition should be restored after a period of disinhibition; set to 1e99 for no inhibition
       
     def setParam(self):
         
@@ -97,6 +101,7 @@ class CompSim():
         self.TC_RS_rise = 5 #rise time constant of the excitatory synaptic conductance
         self.TC_RS_decay = 0.5 #decay time constant of the excitatory synaptic conductance
         self.TC_RS_E = self.E_e #synaptic reversial potential
+        self.TC_RS_G_min = 0.03 #minimal synaptic conductance - weights cannot grow stronger than this value
         self.TC_RS_G_max = 0.35 #maximal synaptic conductance - weights cannot grow stronger than this value
         
         """ TC->FS synapses parameters """#not in use
@@ -106,6 +111,7 @@ class CompSim():
         self.TC_FS_rise = 10.0 #rise time constant of the excitatory synaptic conductance
         self.TC_FS_decay = 0.5 #decay time constant of the excitatory synaptic conductance
         self.TC_FS_E = self.E_e #synaptic reversial potential
+        self.TC_FS_G_min = 0.0 #minimal synaptic conductance - weights cannot grow stronger than this value
         self.TC_FS_G_max = 0.0#0.2 #maximal synaptic conductance - weights cannot grow stronger than this value
         
         """ RS->FS synapses parameters """
@@ -116,6 +122,7 @@ class CompSim():
         self.RS_FS_rise = 10.0 #rise time constant of the excitatory synaptic conductance
         self.RS_FS_decay = 2.2 #decay time constant of the excitatory synaptic conductance
         self.RS_FS_E = self.E_e #synaptic reversial potential
+        self.RS_FS_G_min = 0.0 #minimal synaptic conductance - weights cannot grow stronger than this value
         self.RS_FS_G_max = 1.0 #maximal synaptic conductance - weights cannot grow stronger than this value
         self.RS_FS_extent = 1.0#3.0 #extent of lateral connections
         
@@ -127,6 +134,7 @@ class CompSim():
         self.FS_RS_rise = 5.5 #rise time constant of the inhibitory synaptic conductance
         self.FS_RS_decay = 0.5 #decay time constant of the inhibitory synaptic conductance
         self.FS_RS_E = self.E_i #synaptic reversial potential
+        self.FS_RS_G_min = 0.0 #minimal synaptic conductance - weights cannot grow stronger than this value
         self.FS_RS_G_max = 0.013#0.13 #maximal synaptic conductance - weights cannot grow stronger than this value
         self.FS_RS_extent = 5 #extent of lateral connections
         
@@ -138,6 +146,7 @@ class CompSim():
         self.RS_RS_rise = 5 #rise time constant of the excitatory synaptic conductance
         self.RS_RS_decay = 0.5 #decay time constant of the excitatory synaptic conductance
         self.RS_RS_E = self.E_e #synaptic reversial potential
+        self.RS_RS_G_min = 0.0 #minimal synaptic conductance - weights cannot grow stronger than this value
         self.RS_RS_G_max = 0.12 #maximal synaptic conductance - weights cannot grow stronger than this value
         self.RS_RS_extent = 3#1.0 #extent of lateral connections
         
@@ -149,6 +158,7 @@ class CompSim():
         self.FS_FS_rise = 5.5 #rise time constant of the inhibitory synaptic conductance
         self.FS_FS_decay = 0.5 #decay time constant of the inhibitory synaptic conductance
         self.FS_FS_E = self.E_i #synaptic reversial potential
+        self.FS_FS_G_min = 0.0 #minimal synaptic conductance - weights cannot grow stronger than this value
         self.FS_FS_G_max = 0.2 #maximal synaptic conductance - weights cannot grow stronger than this value
         self.FS_FS_extent = 1.#0.8 #extent of lateral connections
         
@@ -233,10 +243,10 @@ class CompSim():
     def createSynapses(self):
         """ create synapses """
         
-        self.TC_RS = Synapses(self, 'TC', 'RS', {}, {}, self.TC_RS_size, self.TC_RS_G, self.TC_RS_weightRand, self.TC_RS_G_max, self.TC_RS_rise, self.TC_RS_decay, self.TC_RS_E)
-        self.FS_RS = Synapses(self, 'FS', 'RS', {}, {}, self.FS_RS_size, self.FS_RS_G, self.FS_RS_weightRand, self.FS_RS_G_max, self.FS_RS_rise, self.FS_RS_decay, self.FS_RS_E, self.FS_RS_extent)
-        self.RS_FS = Synapses(self, 'RS', 'FS', {}, {}, self.RS_FS_size, self.RS_FS_G, self.RS_FS_weightRand, self.RS_FS_G_max, self.RS_FS_rise, self.RS_FS_decay, self.RS_FS_E, self.RS_FS_extent)
-        self.RS_RS = Synapses(self, 'RS', 'RS', {}, {}, self.RS_RS_size, self.RS_RS_G, self.RS_RS_weightRand, self.RS_RS_G_max, self.RS_RS_rise, self.RS_RS_decay, self.RS_RS_E, self.RS_RS_extent)
+        self.TC_RS = Synapses(self, 'TC', 'RS', {}, {}, self.TC_RS_size, self.TC_RS_G, self.TC_RS_weightRand, self.TC_RS_G_min, self.TC_RS_G_max, self.TC_RS_rise, self.TC_RS_decay, self.TC_RS_E)
+        self.FS_RS = Synapses(self, 'FS', 'RS', {}, {}, self.FS_RS_size, self.FS_RS_G, self.FS_RS_weightRand, self.FS_RS_G_min, self.FS_RS_G_max, self.FS_RS_rise, self.FS_RS_decay, self.FS_RS_E, self.FS_RS_extent)
+        self.RS_FS = Synapses(self, 'RS', 'FS', {}, {}, self.RS_FS_size, self.RS_FS_G, self.RS_FS_weightRand, self.RS_FS_G_min, self.RS_FS_G_max, self.RS_FS_rise, self.RS_FS_decay, self.RS_FS_E, self.RS_FS_extent)
+        self.RS_RS = Synapses(self, 'RS', 'RS', {}, {}, self.RS_RS_size, self.RS_RS_G, self.RS_RS_weightRand, self.RS_RS_G_min, self.RS_RS_G_max, self.RS_RS_rise, self.RS_RS_decay, self.RS_RS_E, self.RS_RS_extent)
         self.synapses = {self.TC_RS, self.FS_RS, self.RS_FS, self.RS_RS} #some synapse population are not in use
         
     def createPopulations(self):
@@ -501,12 +511,13 @@ class CompSim():
                 pops.Vm[~pastSpikes, t] = pops.Vm[~pastSpikes,t-1] + (I_leak + I_inj + I_ref + I_syn)/pops.Tau_m*self.dt #increment Vm at the cell soma
                 
                 #3- make the neurons that reached threshold during the ongoing time step spike
-#                 if False:thrashThis=0 #t*self.dt>6000 and pops.name == 'FS' and (t-self.TC.lastCellSpike[0])*self.dt<10.: #added to remove inhibition after a spike in the TC neuron 0 (input pattern 1)
-#                 else:
-                currentSpike = pops.Vm[:, t] >= self.Vth #find the neurons that reached threshold during the ongoing time step
-                pops.Vm[currentSpike,t] = self.Vspike #make those neurons spike
-                pops.spikeTimes[currentSpike,t] = 1 #record all spike times for raster Plot_Print
-                pops.lastCellSpike[currentSpike] = t #record last spike time
+                if pops.name == 'FS' and t*self.dt>self.disinhibTime and t*self.dt<self.reinhibTime and (t-self.TC.lastCellSpike[0])*self.dt<10.:
+                    self.disinhibition[t]=1 #added to remove inhibition after a spike in the TC neuron 0 (input pattern 1)
+                else:
+                    currentSpike = pops.Vm[:, t] >= self.Vth #find the neurons that reached threshold during the ongoing time step
+                    pops.Vm[currentSpike,t] = self.Vspike #make those neurons spike
+                    pops.spikeTimes[currentSpike,t] = 1 #record all spike times for raster Plot_Print
+                    pops.lastCellSpike[currentSpike] = t #record last spike time
 
             self.TC.lastCellSpike[self.TC.spikeTimes[:,t]==1] = t #make the TC neuron spike based on their pre-determined firing rate
                 
@@ -538,7 +549,7 @@ class CompSim():
                     syns.B += (25./(1.+np.exp((syns.calcium-0.65)/-0.01))-syns.B*3-4.*syns.B*syns.V*8)*self.dt/40. #B: reads of [Ca] timecourse; highest for continuous [Ca]>0.65
                     syns.P += ((7.*pow(syns.calcium/4.,4)/(1.+pow(syns.calcium/4.,4)))-26.*syns.P)*self.dt/500. #P: potentiation; increases propotionally to [Ca]
                     syns.V += (4./(1.+np.exp((syns.calcium-1.82)/-0.05))-syns.V*2.4)*self.dt/10. #V: veto; prevents depression for high [Ca]
-                    syns.g = np.clip(syns.g + (self.lr_LTP*syns.P-self.lr_LTD*syns.D)*self.dt, 0, syns.g_max_matrix) #update synaptic weights based on P and D
+                    syns.g = np.clip(syns.g + (self.lr_LTP*syns.P-self.lr_LTD*syns.D)*self.dt, syns.g_min, syns.g_max_matrix) #update synaptic weights based on P and D
                
             #value trackers
             if not self.STDPplot: self.trackValue(t)
@@ -556,35 +567,48 @@ class CompSim():
         if self.STDPplot: return self.TC_RS.g[0,0]-self.TC_RS_initWeight[0,0]
         print "\nrun time:", int((time.time()-tic_run)/60), 'min,',  int(np.mod((time.time()-tic_run),60)), 'sec'
         if self.plotRFbool: self.plotRF() 
-
+  
     def pickleValue(self):
         print 'Pickle:'
         #save neuron variables to file
         tic_pickle = time.time()
-        pFile = open('../output/neurons', 'w')
+        pFile = open('../output/current/neurons', 'w')
         pickle.dump({'TC':self.TC, 'FS':self.FS, 'RS':self.RS}, pFile, protocol=2)
         pFile.close()
         
         #save synapse parameters to file
-        pFile = open('../output/synParam', 'w')
+        pFile = open('../output/current/synParam', 'w')
         pickle.dump({'TC_RS':self.TC_RS, 'FS_RS':self.FS_RS, 'RS_FS':self.RS_FS, 'RS_RS':self.RS_RS}, pFile, protocol=2)
         pFile.close()
         
         #save synapse variables to file
-        pFile = open('../output/synTracker', 'w')
+        pFile = open('../output/current/synTracker', 'w')
         pickle.dump(self.allSynTracker, pFile, protocol=2)
         pFile.close()
         
         #save TC_RS weights to file
-        pFile = open('../output/weights', 'w')
+        pFile = open('../output/current/weights', 'w')
         pickle.dump({'w':self.TC_RS_gTracker, 'time':self.timeStamp}, pFile, protocol=2)
         pFile.close()
         
         #save simulation paramters to file
-        pFile = open('../output/genParam', 'w')
+        pFile = open('../output/current/genParam', 'w')
         pickle.dump({'numPattern':self.numPattern, 'dt':self.dt, 'trialDuration':self.trialDuration, 'timeArray':self.time_array,
-                     'RF_sampleTime':self.RF_sampleTime, 'neuronsToTrack':self.neuronsToTrack, 'allPats':self.allPats}, pFile, protocol=2)
+                     'RF_sampleTime':self.RF_sampleTime, 'neuronsToTrack':self.neuronsToTrack, 'allPats':self.allPats, 
+                     'disinhibition':self.disinhibition}, pFile, protocol=2)
         pFile.close()
+        
+        pFile = open('../output/current/info.txt', 'w')
+        pFile.write('Duration: %s ms\n' %self.trialDuration)
+        pFile.write('number pattern: %s\n' %self.numPattern)
+        pFile.write('TC size: %s x %s\n' %(self.TC_size, self.TC_size))
+        pFile.write('RS size: %s x %s\n' %(self.RS_size, self.RS_size))
+        pFile.write('disinhibition after: %d ms\n' %self.disinhibTime)
+        pFile.write('seeding of the random generator: %d\n' %self.seed)
+        pFile.write('minimum g value: %d\n' %self.TC_RS_G_min)
+        pFile.write('\ncomments:\n=========\n')
+        pFile.close()
+        
         print "pickle time:", int((time.time()-tic_pickle)/60), 'min,',  int(np.mod((time.time()-tic_pickle),60)), 'sec'
      
     def trackValue(self, t):
@@ -609,7 +633,7 @@ class CompSim():
             self.timeStamp[t/step_sample] = t*self.dt
 
     def plotRF(self):
-#         if True: return
+        if True: return
         tic_plot = time.time()
         print 'Plot:'
         for t,i in zip(self.timeStamp,range(np.size(self.timeStamp))):
@@ -643,7 +667,7 @@ class CompSim():
                 plt.imshow(np.reshape(ODC_mat, [rootSize, rootSize]),interpolation='nearest', cmap='Spectral', vmin=0,vmax=3) #color
                 plt.imshow(np.reshape(alpha_mat, [rootSize, rootSize]),interpolation='nearest', cmap=cmap_trans, vmin=-0.25,vmax=1.5) #transparency
                 plt.title('Ocular Dominance at ' + np.str(t) + 'ms')
-                plt.savefig('../output/' + 'codedMap/' + np.str(int(t)) + '.png')
+                plt.savefig('../output/current/' + 'codedMap/' + np.str(int(t)) + '.png')
                  
                 #plot detailed map
                 plt.figure()
@@ -657,5 +681,5 @@ class CompSim():
                 cax = plt.axes([0.85, 0.1, 0.075, 0.8])
                 plt.colorbar(cax=cax)
                 plt.suptitle('TC->RS Weights at ' + np.str(t) + 'ms')
-                plt.savefig('../output/' + 'detailedMap/' + np.str(int(t)) + '.png')
+                plt.savefig('../output/current/' + 'detailedMap/' + np.str(int(t)) + '.png')
         print "plot time:", int((time.time()-tic_plot)/60), 'min,',  int(np.mod((time.time()-tic_plot),60)), 'sec'

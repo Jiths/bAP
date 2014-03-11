@@ -14,11 +14,13 @@ import matplotlib as mpl
 
 class Plot_RFs(Tk.Tk):
     
-    def __init__(self, root):
+    def __init__(self, root, folder):
         Tk.Tk.__init__(self)
-        self.title("RFs GUI")
-        
         self.root = root
+        self.folder = folder
+        self.title('RFs - ' + folder)
+        self.protocol('WM_DELETE_WINDOW', self.closeGUI)
+        
         self.createRFsGUI()
     
     def createRFsGUI(self):
@@ -68,7 +70,7 @@ class Plot_RFs(Tk.Tk):
         self.timeInput.bind('<Return>', self.roundTime)
         
         #create scale widget for time selection
-        self.timeScale = Tk.Scale(buttonFrame, orient=HORIZONTAL, from_=0, to=self.root.genParam['trialDuration'], resolution=self.root.genParam['RF_sampleTime'], 
+        self.timeScale = Tk.Scale(buttonFrame, orient=HORIZONTAL, from_=0, to=self.root.genParam[self.folder]['trialDuration'], resolution=self.root.genParam[self.folder]['RF_sampleTime'], 
                                   command=self.timeScale_C, length=500, showvalue=0)
         self.timeScale.grid(column=1, row=1, columnspan=5, sticky=(E,W))
         
@@ -86,11 +88,11 @@ class Plot_RFs(Tk.Tk):
         ''' executed on <Return>; rounds the requested time and executes command associated with radio button'''
         #find the closest saved weight snapshot to requested time
         self.RFtime.set(self.timeInput.get())
-        m = np.mod(float(self.RFtime.get()),self.root.genParam['RF_sampleTime'])
-        round_t = np.floor(float(self.RFtime.get())/self.root.genParam['RF_sampleTime'])*self.root.genParam['RF_sampleTime'] + np.round(m*2,-2)/2
+        m = np.mod(float(self.RFtime.get()),self.root.genParam[self.folder]['RF_sampleTime'])
+        round_t = np.floor(float(self.RFtime.get())/self.root.genParam[self.folder]['RF_sampleTime'])*self.root.genParam[self.folder]['RF_sampleTime'] + np.round(m*2,-2)/2
         
-        if round_t/self.root.genParam['RF_sampleTime']>=np.size(self.root.weights['w'],2): #checks for out of bound requested time
-            round_t = (np.size(self.root.weights['w'],2)-1)*self.root.genParam['RF_sampleTime']
+        if round_t/self.root.genParam[self.folder]['RF_sampleTime']>=np.size(self.root.weights[self.folder]['w'],2): #checks for out of bound requested time
+            round_t = (np.size(self.root.weights[self.folder]['w'],2)-1)*self.root.genParam[self.folder]['RF_sampleTime']
             self.mainFig.text(0.5,0.5,'time out-of-bound',bbox=dict(facecolor='red', alpha=0.8), horizontalalignment='center', verticalalignment='center')
             self.canvas.show()
         
@@ -111,22 +113,22 @@ class Plot_RFs(Tk.Tk):
         #retrieve time
         self.roundTime(False)
         t = int(self.RFtime.get())
-        i = int(t/self.root.genParam['RF_sampleTime'])
+        i = int(t/self.root.genParam[self.folder]['RF_sampleTime'])
         
-        squareW = self.root.weights['w'][:,:,i]    
-        rootSize = np.sqrt(self.root.neurons['RS'].size)
-        ODC_mat = np.zeros(self.root.neurons['RS'].size)
-        alpha_mat = np.zeros(self.root.neurons['RS'].size)
+        squareW = self.root.weights[self.folder]['w'][:,:,i]    
+        rootSize = np.sqrt(self.root.neurons[self.folder]['RS'].size)
+        ODC_mat = np.zeros(self.root.neurons[self.folder]['RS'].size)
+        alpha_mat = np.zeros(self.root.neurons[self.folder]['RS'].size)
         #create white color map with transparency gradient
         cmap_trans = mpl.colors.LinearSegmentedColormap.from_list('my_cmap',['black','black'],256) 
         cmap_trans._init()
         alphas = np.linspace(1.0, 0, cmap_trans.N+3)
         cmap_trans._lut[:,-1] = alphas
           
-        for RS in range(self.root.neurons['RS'].size):
+        for RS in range(self.root.neurons[self.folder]['RS'].size):
             prefPattern = [np.sum(squareW[[0,4,8,12],RS]),np.sum(squareW[[1,5,9,13],RS]),np.sum(squareW[[2,6,10,14],RS]),np.sum(squareW[[3,7,11,15],RS])]
             ODC_mat[RS] = np.argmax(prefPattern)
-            alpha_mat[RS] = np.max(prefPattern)-(np.sum(prefPattern)-np.max(prefPattern))/self.root.genParam['numPattern']
+            alpha_mat[RS] = np.max(prefPattern)-(np.sum(prefPattern)-np.max(prefPattern))/self.root.genParam[self.folder]['numPattern']
         #            ODC_mat[RS] = np.mean(self.TC_RS.g[[0,5,10,15],RS]) - np.mean(self.TC_RS.g[[3,6,9,12],RS])   
         self.plt.imshow(np.reshape(ODC_mat, [rootSize, rootSize]),interpolation='nearest', cmap='Spectral', vmin=0,vmax=3) #color
         self.plt.imshow(np.reshape(alpha_mat, [rootSize, rootSize]),interpolation='nearest', cmap=cmap_trans, vmin=-0.25,vmax=1.5) #transparency
@@ -142,13 +144,13 @@ class Plot_RFs(Tk.Tk):
         #retrieve time
         self.roundTime(False)
         t = int(self.RFtime.get())
-        i = t/self.root.genParam['RF_sampleTime']
+        i = t/self.root.genParam[self.folder]['RF_sampleTime']
         
-        rootSize = np.sqrt(self.root.neurons['TC'].size)
-        squareW = self.root.weights['w'][:,:,i]
-        for RS in range(self.root.neurons['RS'].size):
-            subplt = self.mainFig.add_subplot(int(np.ceil(np.sqrt(self.root.neurons['RS'].size))),int(np.ceil(np.sqrt(self.root.neurons['RS'].size))), RS+1)
-            subplt.imshow(np.reshape(squareW[:,RS],[rootSize, rootSize]), interpolation='nearest', vmin=0, vmax=self.root.synParam['TC_RS'].g_max, cmap='bwr')
+        rootSize = np.sqrt(self.root.neurons[self.folder]['TC'].size)
+        squareW = self.root.weights[self.folder]['w'][:,:,i]
+        for RS in range(self.root.neurons[self.folder]['RS'].size):
+            subplt = self.mainFig.add_subplot(int(np.ceil(np.sqrt(self.root.neurons[self.folder]['RS'].size))),int(np.ceil(np.sqrt(self.root.neurons[self.folder]['RS'].size))), RS+1)
+            subplt.imshow(np.reshape(squareW[:,RS],[rootSize, rootSize]), interpolation='nearest', vmin=0, vmax=self.root.synParam[self.folder]['TC_RS'].g_max, cmap='bwr')
             subplt.set_xticks([])
             subplt.set_yticks([])
 #             self.plt.subplots_adjust(bottom=0.1, right=0.8, top=0.9)
@@ -160,6 +162,7 @@ class Plot_RFs(Tk.Tk):
     def individualRF(self):
         print '!!NOT IMPLEMENTED YET!!'
     
-    def closeAll(self):
+    def closeGUI(self, all=False):
+        if not all: self.root.allGUI.remove(self)
         self.destroy()
         

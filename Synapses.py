@@ -8,7 +8,7 @@ from numpy import *
 
 class Synapses(object):
     
-    def __init__(self, sim, preName, postName, pre, post, size, g, weightRand, g_max, rise, decay, E, extent=None):
+    def __init__(self, sim, preName, postName, pre, post, size, g, weightRand, g_min, g_max, rise, decay, E, extent=None):
         ''' 
         Object Constructor 
         '''
@@ -19,6 +19,7 @@ class Synapses(object):
         self.pre = pre #pointer to the pre-synaptic population
         self.post = post #pointer to the post-synaptic population
         self.size = size #size of the synapse matrix
+        self.g_min = g_min #minimal value an AMPA synaptic weight can take
         self.g_max = g_max #maximal value an AMPA synaptic weight can take
         self.g_max_matrix = ones(size)*g_max #matrix of maximal connection weights for the lateral connections
         self.rise = ones(size)*rise #rise time constant of the open probability
