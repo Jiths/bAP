@@ -162,7 +162,7 @@ class Plot_RFs(Tk.Tk):
     def individualRF(self):
         print '!!NOT IMPLEMENTED YET!!'
     
-    def closeGUI(self, all=False):
-        if not all: self.root.allGUI.remove(self)
+    def closeGUI(self, allGUI=False):
+        if not allGUI: self.root.allGUI.remove(self)
         self.destroy()
         

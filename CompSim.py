@@ -20,7 +20,7 @@ class CompSim():
     '''
     This is the main simulation function.
     '''
-    def __init__(self, duration=17000., dt=0.2):
+    def __init__(self, duration=3000., dt=0.2):
 
         self.tic_prep = time.time()
         
@@ -39,7 +39,7 @@ class CompSim():
         self.gaussian = [] #whether 'intracortical' connections are distributed according to a Gaussian distribution. If not, follows a square wave
         self.seed = 2101
         np.random.seed(self.seed) #seeds the random number generator
-        self.neuronsToTrack = ['0', '1', '2', '3', '4', '5', '6'] #Indices of RS neurons whose synaptic variables should be tracked
+        self.neuronsToTrack = ['0', '2', '4', '6', '8', '10', '12', '14', '16', '18', '20', '22', '24'] #Indices of RS neurons whose synaptic variables should be tracked
         self.RF_sampleTime = 50. #time interval at which to sample (take a snapshot) of the TC_RS weight (RF) -- in ms
         self.plotRFbool = False #plot all RFs in .png file at the end of the simulation
         self.disinhibition = np.zeros_like(self.time_array)
@@ -604,6 +604,7 @@ class CompSim():
         pFile.write('TC size: %s x %s\n' %(self.TC_size, self.TC_size))
         pFile.write('RS size: %s x %s\n' %(self.RS_size, self.RS_size))
         pFile.write('disinhibition after: %d ms\n' %self.disinhibTime)
+        pFile.write('restoring of inhibition after: %d ms\n' %self.reinhibTime)
         pFile.write('seeding of the random generator: %d\n' %self.seed)
         pFile.write('minimum g value: %d\n' %self.TC_RS_G_min)
         pFile.write('\ncomments:\n=========\n')

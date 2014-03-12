@@ -119,5 +119,5 @@ class Plot_Root(Tk.Tk):
         
     def closeAll(self):
         #close all open GUIs
-        for gui in self.allGUI: gui.closeGUI(all=True)
+        for gui in self.allGUI: gui.closeGUI(allGUI=True)
         self.destroy()

@@ -33,6 +33,7 @@ class Plot_Traces(Tk.Tk):
         self.g_excit       = Tk.BooleanVar()
         self.g_inhib       = Tk.BooleanVar() 
         self.G_ref         = Tk.BooleanVar()
+        self.BPAP          = Tk.BooleanVar()
         self.spikesSelf    = Tk.BooleanVar()
         self.spikesTC      = Tk.BooleanVar()
         self.spikesRS      = Tk.BooleanVar()
@@ -86,41 +87,47 @@ class Plot_Traces(Tk.Tk):
         self.neuronNumber.set('0')
         self.neuronInput.insert(0,'0')
         self.neuronInput.bind('<Return>', self.renewCanvas)
+        self.neuronInput.bind('<Up>',   lambda unit: self.nextUnit('neuron', +1))
+        self.neuronInput.bind('<Down>', lambda unit: self.nextUnit('neuron', -1))
         
-        check = Tk.Checkbutton(selectionFrame, text='neuron Vm',    command=lambda:self.checked(self.Vm_neuron),  variable=self.Vm_neuron,  onvalue=True, offvalue=False)
+        check = Tk.Checkbutton(selectionFrame, text='neuron Vm',    command=lambda:self.checked(self.Vm_neuron),  variable=self.Vm_neuron,    onvalue=True, offvalue=False)
         check.grid(column=0, row=1, sticky=(W), padx=(0,10))
         self.Vm_neuron.set(False)
         
-        check = Tk.Checkbutton(selectionFrame, text='g excit',      command=lambda:self.checked(self.g_excit),    variable=self.g_excit,     onvalue=True, offvalue=False)
+        check = Tk.Checkbutton(selectionFrame, text='g excit',      command=lambda:self.checked(self.g_excit),    variable=self.g_excit,      onvalue=True, offvalue=False)
         check.grid(column=0, row=2, sticky=(W))
         self.g_excit.set(False)
           
-        check = Tk.Checkbutton(selectionFrame, text='g inhib',      command=lambda:self.checked(self.g_inhib),    variable=self.g_inhib,     onvalue=True, offvalue=False)
+        check = Tk.Checkbutton(selectionFrame, text='g inhib',      command=lambda:self.checked(self.g_inhib),    variable=self.g_inhib,      onvalue=True, offvalue=False)
         check.grid(column=0, row=3, sticky=(W))
         self.g_inhib.set(False)
         
-        check = Tk.Checkbutton(selectionFrame, text='G ref',        command=lambda:self.checked(self.G_ref),      variable=self.G_ref,       onvalue=True, offvalue=False)
+        check = Tk.Checkbutton(selectionFrame, text='G ref',        command=lambda:self.checked(self.G_ref),      variable=self.G_ref,        onvalue=True, offvalue=False)
         check.grid(column=0, row=4, sticky=(W))
         self.G_ref.set(False)
+        
+        check = Tk.Checkbutton(selectionFrame, text='BPAP',         command=lambda:self.checked(self.BPAP),       variable=self.BPAP,         onvalue=True, offvalue=False)
+        check.grid(column=0, row=5, sticky=(W))
+        self.BPAP.set(False)
         
         check = Tk.Checkbutton(selectionFrame, text='spikes',       command=lambda:self.checked(self.spikesSelf), variable=self.spikesSelf,   onvalue=True, offvalue=False)
         check.grid(column=1, row=1, sticky=(W), padx=(0,10))
         self.spikesSelf.set(False)
         
-        check = Tk.Checkbutton(selectionFrame, text='spikes TC',    command=lambda:self.checked(self.spikesTC),   variable=self.spikesTC,    onvalue=True, offvalue=False)
+        check = Tk.Checkbutton(selectionFrame, text='spikes TC',    command=lambda:self.checked(self.spikesTC),   variable=self.spikesTC,     onvalue=True, offvalue=False)
         check.grid(column=1, row=2, sticky=(W))
         self.spikesTC.set(False)
         
-        check = Tk.Checkbutton(selectionFrame, text='spikes RS',    command=lambda:self.checked(self.spikesRS),   variable=self.spikesRS,          onvalue=True, offvalue=False)
+        check = Tk.Checkbutton(selectionFrame, text='spikes RS',    command=lambda:self.checked(self.spikesRS),   variable=self.spikesRS,     onvalue=True, offvalue=False)
         check.grid(column=1, row=3, sticky=(W))
         self.spikesRS.set(False)
           
-        check = Tk.Checkbutton(selectionFrame, text='spikes FS',    command=lambda:self.checked(self.spikesFS),   variable=self.spikesFS,          onvalue=True, offvalue=False)
+        check = Tk.Checkbutton(selectionFrame, text='spikes FS',    command=lambda:self.checked(self.spikesFS),   variable=self.spikesFS,     onvalue=True, offvalue=False)
         check.grid(column=1, row=4, sticky=(W))
         self.spikesFS.set(False)
         
         s = ttk.Separator(selectionFrame, orient=VERTICAL)
-        s.grid(column=2, row=0,rowspan=5, sticky="snew", pady=(2,2), padx=(2,3))
+        s.grid(column=2, row=0,rowspan=6, sticky="snew", pady=(2,2), padx=(2,3))
         
         #create controls for synapse variables
         Tk.Label(selectionFrame, text='synapse: ').grid(column=3, row=0, sticky=(W))
@@ -129,12 +136,14 @@ class Plot_Traces(Tk.Tk):
         self.synapseNumber.set('0')
         self.synapseInput.insert(0,'0')
         self.synapseInput.bind('<Return>', self.renewCanvas)
+        self.synapseInput.bind('<Up>',   lambda unit: self.nextUnit('synapse', +1))
+        self.synapseInput.bind('<Down>', lambda unit: self.nextUnit('synapse', -1))
         
-        self.CB_Vm_syn = Tk.Checkbutton(selectionFrame, text='syn Vm',    command=lambda:self.checked(self.Vm_syn),     variable=self.Vm_syn,      onvalue=True, offvalue=False)
+        self.CB_Vm_syn = Tk.Checkbutton(selectionFrame, text='syn Vm',     command=lambda:self.checked(self.Vm_syn),     variable=self.Vm_syn,      onvalue=True, offvalue=False)
         self.CB_Vm_syn.grid(column=3, row=1, sticky=(W), padx=(0,10))
         self.Vm_syn.set(False)
         
-        self.CB_g = Tk.Checkbutton(selectionFrame, text='g syn',               command=lambda:self.checked(self.g),          variable=self.g,           onvalue=True, offvalue=False)
+        self.CB_g = Tk.Checkbutton(selectionFrame, text='g syn',           command=lambda:self.checked(self.g),          variable=self.g,           onvalue=True, offvalue=False)
         self.CB_g.grid(column=3, row=2, sticky=(W))
         self.g.set(False)
         
@@ -146,7 +155,7 @@ class Plot_Traces(Tk.Tk):
         self.CB_Mg.grid(column=3, row=4, sticky=(W))  
         self.Mg.set(False)
         
-        self.CB_I_syn = Tk.Checkbutton(selectionFrame, text='I syn',      command=lambda:self.checked(self.I_syn),      variable=self.I_syn,       onvalue=True, offvalue=False)
+        self.CB_I_syn = Tk.Checkbutton(selectionFrame, text='I syn',       command=lambda:self.checked(self.I_syn),      variable=self.I_syn,       onvalue=True, offvalue=False)
         self.CB_I_syn.grid(column=4, row=1, sticky=(W))
         self.I_syn.set(False)
           
@@ -157,9 +166,6 @@ class Plot_Traces(Tk.Tk):
         self.CB_I_VGCC = Tk.Checkbutton(selectionFrame, text='I VGCC',     command=lambda:self.checked(self.I_VGCC),     variable=self.I_VGCC,      onvalue=True, offvalue=False)
         self.CB_I_VGCC.grid(column=4, row=3, sticky=(W))
         self.I_VGCC.set(False)
-        
-        self.legendButton = Tk.Button(selectionFrame, text='info ON',     command=self.legendClicked, width=6)
-        self.legendButton.grid(column=4, row=4, sticky=(W))
 
         self.CB_P = Tk.Checkbutton(selectionFrame, text='P',               command=lambda:self.checked(self.P),          variable=self.P,           onvalue=True, offvalue=False)
         self.CB_P.grid(column=5, row=1, sticky=(W), padx=(0,10))
@@ -178,7 +184,7 @@ class Plot_Traces(Tk.Tk):
         self.V.set(False)
         
         s = ttk.Separator(selectionFrame, orient=VERTICAL)
-        s.grid(column=6, row=0,rowspan=5, sticky="snew", pady=(2,2), padx=(2,3))
+        s.grid(column=6, row=0,rowspan=6, sticky="snew", pady=(2,2), padx=(2,3))
         
         #create controls for time variables
         self.offButton = Tk.Button(selectionFrame,              command=self.disable, width=3)
@@ -203,7 +209,7 @@ class Plot_Traces(Tk.Tk):
         self.yminInput.bind('<Return>', self.moveReturn)
 
         s = ttk.Separator(selectionFrame, orient=HORIZONTAL)
-        s.grid(column=7, row=2,columnspan=5, sticky="snew", pady=(2,2), padx=(2,2))
+        s.grid(column=7, row=2,columnspan=5, sticky="nsew", pady=(2,2), padx=(2,2))
         
         self.xminInput = Tk.Entry(selectionFrame, textvariable=self.x_min, width=12)
         self.xminInput.grid(column=7, row=3, columnspan=2, sticky=(E,W))
@@ -222,6 +228,9 @@ class Plot_Traces(Tk.Tk):
         
         button = Tk.Button(selectionFrame, text='>',                command=lambda:self.move('x_right'), width=6)
         button.grid(column=9, row=4, columnspan=2, sticky=(E,W))
+        
+        self.legendButton = Tk.Button(selectionFrame, text='info ON',     command=self.legendClicked, width=6)
+        self.legendButton.grid(column=7, row=5, columnspan=2, sticky=(EW))
         
         self.offValue = not self.offValue
         self.disable()
@@ -294,6 +303,37 @@ class Plot_Traces(Tk.Tk):
         self.xmaxInput.insert(0,self.x_max.get())
         
         self.renewCanvas(False)
+        
+    def nextUnit(self, unit, d):
+        if unit=='synapse':
+            newNumber = int(self.synapseNumber.get()) + d
+            if newNumber>=0 and newNumber<self.root.neurons[self.folder]['TC'].size:
+                self.synapseNumber.set(str(newNumber))
+                self.synapseInput.delete(0, END)
+                self.synapseInput.insert(0, self.synapseNumber.get())
+            else:
+                    self.mainFig.text(0.5,0.5,'synapse out-of-bound',bbox=dict(facecolor='red', alpha=0.8), horizontalalignment='center', verticalalignment='center')
+                    self.canvas.show()
+        if unit=='neuron': #if the neuron that is looked at now doesn't have synapse info, than jump to next neuron; else jump to next neuron with synapse info
+            if self.neuronNumber.get() not in self.root.genParam[self.folder]['neuronsToTrack']:
+                newNumber = int(self.neuronNumber.get()) + d
+                if newNumber>=0 and newNumber<np.size(self.root.neurons[self.folder]['RS'].g_excit,0):#makes sure that index won't go out of bound
+                    self.neuronNumber.set(str(newNumber))
+                    self.neuronInput.delete(0, END)
+                    self.neuronInput.insert(0, self.neuronNumber.get())
+                else:
+                    self.mainFig.text(0.5,0.5,'neuron out-of-bound',bbox=dict(facecolor='red', alpha=0.8), horizontalalignment='center', verticalalignment='center')
+                    self.canvas.show()
+            else:
+                index = self.root.genParam[self.folder]['neuronsToTrack'].index(self.neuronNumber.get())
+                if index+d>=0 and index+d<np.size(self.root.genParam[self.folder]['neuronsToTrack']): #makes sure that index won't go out of bound
+                    self.neuronNumber.set(str(int(self.root.genParam[self.folder]['neuronsToTrack'][index+d])))
+                    self.neuronInput.delete(0, END)
+                    self.neuronInput.insert(0, self.neuronNumber.get())
+                else:
+                    self.mainFig.text(0.5,0.5,'neuron out-of-bound',bbox=dict(facecolor='red', alpha=0.8), horizontalalignment='center', verticalalignment='center')
+                    self.canvas.show()
+        self.renewCanvas(False)
 
     def rasterPlotSelf(self, n):
         spikesRS = np.argwhere(self.root.neurons[self.folder]['RS'].spikeTimes[n,:])
@@ -338,6 +378,7 @@ class Plot_Traces(Tk.Tk):
         if self.g_excit.get():    p2, = self.plt.plot(self.root.genParam[self.folder]['timeArray'],  self.root.neurons[self.folder]['RS'].g_excit[n,:],       'r')
         if self.g_inhib.get():    p3, = self.plt.plot(self.root.genParam[self.folder]['timeArray'],  self.root.neurons[self.folder]['RS'].g_inhib[n,:],       'b')
         if self.G_ref.get():      p4, = self.plt.plot(self.root.genParam[self.folder]['timeArray'],  self.root.neurons[self.folder]['RS'].Gref[n,:]*8,        'k')
+        if self.BPAP.get():       p4, = self.plt.plot(self.root.genParam[self.folder]['timeArray'],  self.root.neurons[self.folder]['RS'].BPAP[n,:]*30,          'k')
         if self.spikesSelf.get(): self.rasterPlotSelf(n)
         if self.spikesTC.get():   self.rasterPlotTC('TC')
         if self.spikesRS.get():   self.rasterPlotRSFS('RS')
@@ -431,6 +472,6 @@ class Plot_Traces(Tk.Tk):
             
         return n, s
 
-    def closeGUI(self, all=False):
-        if not all: self.root.allGUI.remove(self)
+    def closeGUI(self, allGUI=False):
+        if not allGUI: self.root.allGUI.remove(self)
         self.destroy()   
